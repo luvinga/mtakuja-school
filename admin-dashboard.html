@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4CAF50">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        .stat-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            margin: 18px 0;
+        }
+        .stat-card {
+            background: #ffffff;
+            border-left: 5px solid #43a047;
+            border-radius: 12px;
+            padding: 16px 14px;
+            box-shadow: 0 2px 10px rgba(46,125,50,0.12);
+        }
+        .stat-card .stat-label {
+            font-size: 12px;
+            color: #777;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            margin-bottom: 6px;
+        }
+        .stat-card .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #1b5e20;
+            line-height: 1;
+        }
+        .section-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #2e7d32;
+            margin: 22px 0 10px;
+            border-bottom: 2px solid #c8e6c9;
+            padding-bottom: 6px;
+        }
+        .notice-card {
+            background: #f9f9f9;
+            border-left: 4px solid #43a047;
+            border-radius: 10px;
+            padding: 12px 14px;
+            margin-bottom: 10px;
+            border: 1px solid #e0e0e0;
+            border-left: 4px solid #43a047;
+        }
+        .notice-card.urgent {
+            border-left-color: #e53935;
+            background: #fff8f8;
+        }
+        .notice-card .notice-title {
+            font-weight: bold;
+            color: #1b5e20;
+            font-size: 15px;
+            margin-bottom: 4px;
+        }
+        .notice-card .notice-meta {
+            font-size: 12px;
+            color: #888;
+        }
+        .quick-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .quick-actions button {
+            width: 100%;
+            margin: 0;
+            padding: 12px 8px;
+            font-size: 14px;
+        }
+        @media (min-width: 600px) {
+            .quick-actions { grid-template-columns: repeat(3, 1fr); }
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        th, td { padding: 8px 10px; text-align: left; }
+        th { background: linear-gradient(135deg, #1b5e20, #2e7d32); color: #fff; }
+        tr:nth-child(even) { background: #f1f8e9; }
+        td { color: #333; border-bottom: 1px solid #e0e0e0; }
+    </style>
+</head>
+<body>
+<div class="app-container">
+
+<button class="back-btn" onclick="goTo('teacher-dashboard.html')">← Back</button>
+<h2>📊 Dashboard Summary</h2>
+<p id="dash-sub" style="text-align:center; color:#666; margin-top:-10px;">Loading...</p>
+
+<!-- Stat Cards -->
+<div class="stat-grid">
+    <div class="stat-card">
+        <div class="stat-label">Total Students</div>
+        <div class="stat-value" id="stat-students">—</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Total Teachers</div>
+        <div class="stat-value" id="stat-teachers">—</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Attendance Records</div>
+        <div class="stat-value" id="stat-attendance">—</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Grade Records</div>
+        <div class="stat-value" id="stat-grades">—</div>
+    </div>
+</div>
+
+<!-- Student Breakdown -->
+<div class="section-title">Students by Class/Stream</div>
+<div id="breakdown-container"><em style="color:#999;">Loading...</em></div>
+
+<!-- Recent Notices -->
+<div class="section-title">Recent Notices</div>
+<div id="notices-container"><em style="color:#999;">Loading...</em></div>
+
+<!-- Quick Actions -->
+<div class="section-title">Quick Actions</div>
+<div class="quick-actions">
+    <button onclick="goTo('admin.html')">⚙️ Admin Panel</button>
+    <button onclick="goTo('notices.html')">📢 Post a Notice</button>
+    <button onclick="goTo('timetable-edit.html')">📅 Edit Timetable</button>
+</div>
+
+</div>
+<script src="firebase-app-compat.js"></script>
+<script src="firebase-firestore-compat.js"></script>
+<script src="firebase.js"></script>
+<script src="script.js?v=2"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var role = checkAuth();
+        if (role !== 'admin') { goTo('teacher-dashboard.html'); return; }
+
+        var teacherData = null;
+        try { teacherData = JSON.parse(localStorage.getItem('teacherData')); } catch(e) {}
+        if (teacherData && teacherData.name) {
+            document.getElementById('dash-sub').textContent = 'Welcome, ' + teacherData.name;
+        } else {
+            document.getElementById('dash-sub').textContent = 'Admin Overview';
+        }
+
+        loadStats();
+    });
+
+    function loadStats() {
+        // Students
+        db.collection('students').get().then(function(snap) {
+            document.getElementById('stat-students').textContent = snap.size;
+            buildBreakdown(snap);
+        }).catch(function(err) {
+            document.getElementById('stat-students').textContent = '!';
+        });
+
+        // Teachers
+        db.collection('teachers').get().then(function(snap) {
+            document.getElementById('stat-teachers').textContent = snap.size;
+        }).catch(function() {
+            document.getElementById('stat-teachers').textContent = '!';
+        });
+
+        // Attendance
+        db.collection('attendance').get().then(function(snap) {
+            document.getElementById('stat-attendance').textContent = snap.size;
+        }).catch(function() {
+            document.getElementById('stat-attendance').textContent = '!';
+        });
+
+        // Grades
+        db.collection('grades').get().then(function(snap) {
+            document.getElementById('stat-grades').textContent = snap.size;
+        }).catch(function() {
+            document.getElementById('stat-grades').textContent = '!';
+        });
+
+        // Notices
+        db.collection('notices').get().then(function(snap) {
+            var notices = [];
+            snap.forEach(function(doc) {
+                var d = doc.data();
+                d._id = doc.id;
+                notices.push(d);
+            });
+            // Sort newest first (client-side)
+            notices.sort(function(a, b) {
+                var da = a.date || a.timestamp || '';
+                var db_ = b.date || b.timestamp || '';
+                return db_ > da ? 1 : db_ < da ? -1 : 0;
+            });
+            renderNotices(notices.slice(0, 3));
+        }).catch(function(err) {
+            document.getElementById('notices-container').innerHTML = '<em style="color:red;">Error loading notices.</em>';
+        });
+    }
+
+    function buildBreakdown(snap) {
+        var groups = {};
+        snap.forEach(function(doc) {
+            var s = doc.data();
+            var key = s.form + (s.stream ? ' — ' + s.stream : '');
+            if (!groups[key]) groups[key] = 0;
+            groups[key]++;
+        });
+
+        var container = document.getElementById('breakdown-container');
+        if (Object.keys(groups).length === 0) {
+            container.innerHTML = '<em style="color:#999;">No students found.</em>';
+            return;
+        }
+
+        var table = document.createElement('table');
+        var thead = document.createElement('thead');
+        thead.innerHTML = '<tr><th>Class / Stream</th><th>Count</th></tr>';
+        table.appendChild(thead);
+
+        var tbody = document.createElement('tbody');
+        Object.keys(groups).sort().forEach(function(key) {
+            var tr = document.createElement('tr');
+            var td1 = document.createElement('td');
+            td1.textContent = key;
+            var td2 = document.createElement('td');
+            td2.textContent = groups[key];
+            tr.appendChild(td1);
+            tr.appendChild(td2);
+            tbody.appendChild(tr);
+        });
+        table.appendChild(tbody);
+        container.innerHTML = '';
+        container.appendChild(table);
+    }
+
+    function renderNotices(notices) {
+        var container = document.getElementById('notices-container');
+        if (notices.length === 0) {
+            container.innerHTML = '<em style="color:#999;">No notices posted yet.</em>';
+            return;
+        }
+        container.innerHTML = '';
+        notices.forEach(function(n) {
+            var card = document.createElement('div');
+            card.className = 'notice-card' + (n.urgent ? ' urgent' : '');
+
+            var title = document.createElement('div');
+            title.className = 'notice-title';
+            title.textContent = (n.urgent ? '🔴 ' : '') + (n.title || '(No title)');
+
+            var body = document.createElement('div');
+            body.style.fontSize = '14px';
+            body.style.color = '#444';
+            body.style.margin = '4px 0';
+            body.textContent = n.body || '';
+
+            var meta = document.createElement('div');
+            meta.className = 'notice-meta';
+            meta.textContent = (n.date || '') + (n.postedBy ? '  ·  Posted by: ' + n.postedBy : '');
+
+            card.appendChild(title);
+            card.appendChild(body);
+            card.appendChild(meta);
+            container.appendChild(card);
+        });
+    }
+</script>
+<script>if("serviceWorker" in navigator){navigator.serviceWorker.register("service-worker.js");}</script>
+</body>
+</html>

@@ -78,6 +78,12 @@
 
         // Show admin panel link for admin users
         if (teacher.role === 'admin') {
+            const dashBtn = document.createElement('button');
+            dashBtn.textContent = '📊 Dashboard Summary';
+            dashBtn.style.background = 'linear-gradient(135deg, #1565c0, #0d47a1)';
+            dashBtn.onclick = function() { goTo('admin-dashboard.html'); };
+            container.appendChild(dashBtn);
+
             const adminBtn = document.createElement('button');
             adminBtn.textContent = '⚙️ Admin Panel';
             adminBtn.style.background = '#9C27B0';

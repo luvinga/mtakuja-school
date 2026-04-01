@@ -8,21 +8,260 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        .notice-form {
+            background: #f1f8e9;
+            border: 1px solid #c8e6c9;
+            border-radius: 14px;
+            padding: 16px;
+            margin-bottom: 24px;
+        }
+        .notice-form h3 {
+            margin-top: 0;
+            color: #1b5e20;
+        }
+        .notice-form input[type="text"],
+        .notice-form textarea {
+            display: block;
+            width: 100%;
+            margin: 6px 0 12px;
+            padding: 10px 12px;
+            font-size: 14px;
+            border-radius: 10px;
+            border: 2px solid #c8e6c9;
+            background: #ffffff;
+            font-family: Arial, sans-serif;
+            box-sizing: border-box;
+            transition: border-color 0.2s;
+        }
+        .notice-form input[type="text"]:focus,
+        .notice-form textarea:focus {
+            outline: none;
+            border-color: #43a047;
+        }
+        .notice-form textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+        .notice-form label {
+            font-size: 13px;
+            font-weight: bold;
+            color: #2e7d32;
+            margin-top: 0;
+        }
+        .notice-form .urgent-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .notice-form .urgent-row input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+        .notice-form button[type="submit"] {
+            width: 100%;
+            margin: 0;
+            padding: 12px;
+        }
+        .notice-card {
+            background: #ffffff;
+            border: 1px solid #e0e0e0;
+            border-left: 5px solid #43a047;
+            border-radius: 12px;
+            padding: 14px 16px;
+            margin-bottom: 12px;
+            box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+        }
+        .notice-card.urgent {
+            border-left-color: #e53935;
+            background: #fff8f8;
+        }
+        .notice-card .notice-title {
+            font-weight: bold;
+            font-size: 16px;
+            color: #1b5e20;
+            margin-bottom: 6px;
+        }
+        .notice-card.urgent .notice-title {
+            color: #c62828;
+        }
+        .notice-card .notice-body {
+            font-size: 14px;
+            color: #444;
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }
+        .notice-card .notice-meta {
+            font-size: 12px;
+            color: #999;
+        }
+        #status-msg { font-size: 13px; margin-top: 8px; }
+        #status-msg.ok  { color: #2e7d32; }
+        #status-msg.err { color: #c62828; }
+    </style>
 </head>
 <body>
 <div class="app-container">
 
 <button class="back-btn" onclick="goBack()">← Back</button>
+<h2>📢 School Notices</h2>
 
-<h2>School Notices</h2>
-<ul>
-    <li>School opens at 7:00 AM</li>
-    <li>Parent-Teacher meeting on Friday</li>
-    <li>Exam schedule released</li>
-</ul>
+<!-- Post Notice form (admin only, shown by JS) -->
+<div id="post-notice-section" style="display:none;">
+    <div class="notice-form">
+        <h3>Post a Notice</h3>
+        <label>Title</label>
+        <input type="text" id="notice-title" placeholder="Notice title" required>
+
+        <label>Message</label>
+        <textarea id="notice-body" placeholder="Write your notice here..."></textarea>
+
+        <div class="urgent-row">
+            <input type="checkbox" id="notice-urgent">
+            <label for="notice-urgent" style="margin-top:0; font-weight:normal; color:#c62828;">Mark as Urgent</label>
+        </div>
+
+        <button type="submit" onclick="postNotice()">Post Notice</button>
+        <div id="status-msg"></div>
+    </div>
+</div>
+
+<!-- Notices list -->
+<div id="notices-list"><em style="color:#999;">Loading notices...</em></div>
 
 </div>
+<script src="firebase-app-compat.js"></script>
+<script src="firebase-firestore-compat.js"></script>
+<script src="firebase.js"></script>
 <script src="script.js?v=2"></script>
+<script>
+    var currentRole = null;
+    var currentTeacherName = '';
+
+    document.addEventListener('DOMContentLoaded', function() {
+        var role = checkAuth();
+        if (!role) return; // checkAuth redirects if not logged in
+        currentRole = role;
+
+        if (role === 'admin') {
+            document.getElementById('post-notice-section').style.display = 'block';
+            try {
+                var td = JSON.parse(localStorage.getItem('teacherData'));
+                if (td && td.name) currentTeacherName = td.name;
+            } catch(e) {}
+        } else if (role === 'teacher') {
+            try {
+                var td = JSON.parse(localStorage.getItem('teacherData'));
+                if (td && td.name) currentTeacherName = td.name;
+            } catch(e) {}
+        } else if (role === 'parent') {
+            var student = localStorage.getItem('student') || '';
+            currentTeacherName = 'Parent of ' + student;
+        }
+
+        loadNotices();
+    });
+
+    function loadNotices() {
+        var container = document.getElementById('notices-list');
+        container.innerHTML = '<em style="color:#999;">Loading...</em>';
+
+        db.collection('notices').get().then(function(snap) {
+            var notices = [];
+            snap.forEach(function(doc) {
+                var d = doc.data();
+                d._id = doc.id;
+                notices.push(d);
+            });
+
+            // Sort newest first client-side
+            notices.sort(function(a, b) {
+                var da = a.date || a.timestamp || '';
+                var db_ = b.date || b.timestamp || '';
+                return db_ > da ? 1 : db_ < da ? -1 : 0;
+            });
+
+            renderNotices(notices, container);
+        }).catch(function(err) {
+            container.innerHTML = '<em style="color:red;">Error loading notices: ' + err.message + '</em>';
+        });
+    }
+
+    function renderNotices(notices, container) {
+        container.innerHTML = '';
+        if (notices.length === 0) {
+            container.innerHTML = '<p style="text-align:center; color:#999;">No notices have been posted yet.</p>';
+            return;
+        }
+
+        notices.forEach(function(n) {
+            var card = document.createElement('div');
+            card.className = 'notice-card' + (n.urgent ? ' urgent' : '');
+
+            var title = document.createElement('div');
+            title.className = 'notice-title';
+            title.textContent = (n.urgent ? '🔴 ' : '') + (n.title || '(No title)');
+
+            var body = document.createElement('div');
+            body.className = 'notice-body';
+            body.textContent = n.body || '';
+
+            var meta = document.createElement('div');
+            meta.className = 'notice-meta';
+            var metaParts = [];
+            if (n.date) metaParts.push(n.date);
+            if (n.postedBy) metaParts.push('Posted by: ' + n.postedBy);
+            meta.textContent = metaParts.join('  ·  ');
+
+            card.appendChild(title);
+            card.appendChild(body);
+            card.appendChild(meta);
+            container.appendChild(card);
+        });
+    }
+
+    function postNotice() {
+        var statusEl = document.getElementById('status-msg');
+        statusEl.textContent = '';
+        statusEl.className = '';
+
+        var title = document.getElementById('notice-title').value.trim();
+        var body = document.getElementById('notice-body').value.trim();
+        var urgent = document.getElementById('notice-urgent').checked;
+
+        if (!title) { statusEl.textContent = 'Please enter a title.'; statusEl.className = 'err'; return; }
+        if (!body)  { statusEl.textContent = 'Please enter a message.'; statusEl.className = 'err'; return; }
+
+        var now = new Date();
+        var dateStr = now.toISOString().split('T')[0];
+
+        var record = {
+            title: title,
+            body: body,
+            urgent: urgent,
+            postedBy: currentTeacherName || 'Admin',
+            date: dateStr,
+            timestamp: now.toISOString()
+        };
+
+        statusEl.textContent = 'Posting...';
+        statusEl.className = '';
+
+        db.collection('notices').add(record).then(function() {
+            statusEl.textContent = 'Notice posted successfully!';
+            statusEl.className = 'ok';
+            document.getElementById('notice-title').value = '';
+            document.getElementById('notice-body').value = '';
+            document.getElementById('notice-urgent').checked = false;
+            loadNotices();
+        }).catch(function(err) {
+            statusEl.textContent = 'Error: ' + err.message;
+            statusEl.className = 'err';
+        });
+    }
+</script>
 <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("service-worker.js");}</script>
 </body>
 </html>

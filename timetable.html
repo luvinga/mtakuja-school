@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Class Timetable</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4CAF50">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        .timetable-wrap {
+            overflow-x: auto;
+            margin-top: 16px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 500px;
+            font-size: 13px;
+        }
+        th {
+            background: linear-gradient(135deg, #1b5e20, #2e7d32);
+            color: #fff;
+            padding: 10px 8px;
+            text-align: center;
+        }
+        th.period-col {
+            background: linear-gradient(135deg, #2e7d32, #388e3c);
+            min-width: 70px;
+        }
+        td {
+            border: 1px solid #c8e6c9;
+            padding: 8px 6px;
+            text-align: center;
+            vertical-align: top;
+            color: #333;
+        }
+        td .subject {
+            font-weight: bold;
+            color: #1b5e20;
+            display: block;
+        }
+        td .teacher-name {
+            font-size: 11px;
+            color: #777;
+            display: block;
+            margin-top: 2px;
+        }
+        td.empty-cell {
+            color: #bbb;
+            font-style: italic;
+            font-size: 12px;
+        }
+        tr:nth-child(even) td { background: #f1f8e9; }
+        #class-label {
+            text-align: center;
+            color: #555;
+            font-size: 15px;
+            margin-top: -10px;
+            margin-bottom: 6px;
+        }
+    </style>
+</head>
+<body>
+<div class="app-container">
+
+<button class="back-btn" onclick="goBack()">← Back</button>
+<h2>📅 Class Timetable</h2>
+<p id="class-label">Loading...</p>
+
+<div class="timetable-wrap">
+    <div id="timetable-container"><em style="color:#999;">Loading timetable...</em></div>
+</div>
+
+</div>
+<script src="firebase-app-compat.js"></script>
+<script src="firebase-firestore-compat.js"></script>
+<script src="firebase.js"></script>
+<script src="script.js?v=2"></script>
+<script>
+    var DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+    var PERIODS = ['Period 1', 'Period 2', 'Period 3', 'Period 4', 'Period 5', 'Period 6', 'Period 7'];
+
+    document.addEventListener('DOMContentLoaded', function() {
+        var role = checkAuth();
+        if (!role) return;
+
+        var cls, stream;
+
+        if (role === 'parent') {
+            cls    = localStorage.getItem('studentClass');
+            stream = localStorage.getItem('studentStream');
+        } else {
+            // teacher or admin
+            cls    = localStorage.getItem('selectedClass');
+            stream = localStorage.getItem('selectedStream');
+        }
+
+        if (!cls) {
+            document.getElementById('timetable-container').innerHTML =
+                '<p style="text-align:center; color:#999;">No class selected. Please go back and select a class first.</p>';
+            return;
+        }
+
+        var label = stream ? cls + ' — ' + stream : cls;
+        document.getElementById('class-label').textContent = label;
+
+        loadTimetable(cls, stream);
+    });
+
+    function loadTimetable(cls, stream) {
+        var container = document.getElementById('timetable-container');
+
+        var query = db.collection('timetable').where('class', '==', cls);
+        if (stream) {
+            query = query.where('stream', '==', stream);
+        } else {
+            query = query.where('stream', '==', null);
+        }
+
+        query.get().then(function(snap) {
+            if (snap.empty) {
+                container.innerHTML = '<p style="text-align:center; color:#888; padding:20px;">Timetable not set up yet.</p>';
+                return;
+            }
+            var data = snap.docs[0].data();
+            var schedule = data.schedule || {};
+            renderTable(schedule, container);
+        }).catch(function(err) {
+            container.innerHTML = '<em style="color:red;">Error loading timetable: ' + err.message + '</em>';
+        });
+    }
+
+    function renderTable(schedule, container) {
+        var table = document.createElement('table');
+
+        // Header row
+        var thead = document.createElement('thead');
+        var headerRow = document.createElement('tr');
+        var cornerTh = document.createElement('th');
+        cornerTh.textContent = 'Period';
+        cornerTh.className = 'period-col';
+        headerRow.appendChild(cornerTh);
+        DAYS.forEach(function(day) {
+            var th = document.createElement('th');
+            th.textContent = day;
+            headerRow.appendChild(th);
+        });
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
+
+        // Body rows
+        var tbody = document.createElement('tbody');
+        PERIODS.forEach(function(period) {
+            var tr = document.createElement('tr');
+
+            var periodTd = document.createElement('td');
+            periodTd.textContent = period;
+            periodTd.style.fontWeight = 'bold';
+            periodTd.style.color = '#2e7d32';
+            periodTd.style.whiteSpace = 'nowrap';
+            tr.appendChild(periodTd);
+
+            DAYS.forEach(function(day) {
+                var td = document.createElement('td');
+                var dayData = schedule[day] || {};
+                var cell = dayData[period];
+                if (cell && cell.subject) {
+                    var subjectSpan = document.createElement('span');
+                    subjectSpan.className = 'subject';
+                    subjectSpan.textContent = cell.subject;
+                    td.appendChild(subjectSpan);
+                    if (cell.teacher) {
+                        var teacherSpan = document.createElement('span');
+                        teacherSpan.className = 'teacher-name';
+                        teacherSpan.textContent = cell.teacher;
+                        td.appendChild(teacherSpan);
+                    }
+                } else {
+                    td.className = 'empty-cell';
+                    td.textContent = '—';
+                }
+                tr.appendChild(td);
+            });
+
+            tbody.appendChild(tr);
+        });
+        table.appendChild(tbody);
+
+        container.innerHTML = '';
+        container.appendChild(table);
+    }
+</script>
+<script>if("serviceWorker" in navigator){navigator.serviceWorker.register("service-worker.js");}</script>
+</body>
+</html>

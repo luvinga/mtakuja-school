@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Edit Timetable</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4CAF50">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        .selector-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+        .selector-row select {
+            flex: 1;
+            min-width: 120px;
+            margin: 0;
+        }
+        .selector-row button {
+            width: auto;
+            margin: 0;
+            padding: 10px 20px;
+            font-size: 14px;
+        }
+        .timetable-wrap {
+            overflow-x: auto;
+            margin-top: 16px;
+        }
+        table {
+            border-collapse: collapse;
+            font-size: 12px;
+            min-width: 560px;
+            width: 100%;
+        }
+        th {
+            background: linear-gradient(135deg, #1b5e20, #2e7d32);
+            color: #fff;
+            padding: 8px 6px;
+            text-align: center;
+            white-space: nowrap;
+        }
+        th.period-col { min-width: 72px; }
+        td {
+            border: 1px solid #c8e6c9;
+            padding: 4px 3px;
+            vertical-align: top;
+            min-width: 100px;
+        }
+        td input[type="text"] {
+            display: block;
+            width: 100%;
+            margin: 2px 0;
+            padding: 5px 6px;
+            font-size: 12px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            background: #fff;
+            box-sizing: border-box;
+        }
+        td input[type="text"]:focus {
+            outline: none;
+            border-color: #43a047;
+            background: #f9fbe7;
+        }
+        td input[type="text"].teacher-input {
+            font-size: 11px;
+            color: #666;
+            border-color: #e0e0e0;
+        }
+        .period-label {
+            font-weight: bold;
+            color: #2e7d32;
+            white-space: nowrap;
+            padding: 4px 8px;
+            font-size: 12px;
+        }
+        tr:nth-child(even) td { background: #f9fef9; }
+        #save-btn {
+            margin-top: 16px;
+            width: 100%;
+        }
+        #save-status {
+            font-size: 13px;
+            text-align: center;
+            margin-top: 8px;
+        }
+        #save-status.ok  { color: #2e7d32; }
+        #save-status.err { color: #c62828; }
+        #timetable-area { display: none; }
+    </style>
+</head>
+<body>
+<div class="app-container">
+
+<button class="back-btn" onclick="goTo('admin-dashboard.html')">← Back</button>
+<h2>📅 Edit Timetable</h2>
+
+<div class="selector-row">
+    <select id="sel-class" onchange="onClassChange()">
+        <option value="">Select Class</option>
+        <option value="Form 1">Form 1</option>
+        <option value="Form 2">Form 2</option>
+        <option value="Form 3">Form 3</option>
+        <option value="Form 4">Form 4</option>
+    </select>
+    <select id="sel-stream" style="display:none;">
+        <option value="">Select Stream</option>
+        <option value="Science">Science</option>
+        <option value="Business">Business</option>
+        <option value="Arts">Arts</option>
+    </select>
+    <button onclick="loadTimetable()">Load</button>
+</div>
+
+<div id="timetable-area">
+    <p id="timetable-label" style="text-align:center; color:#555; font-size:14px; margin-bottom:8px;"></p>
+    <div class="timetable-wrap">
+        <table id="timetable-table"></table>
+    </div>
+    <button id="save-btn" onclick="saveTimetable()">💾 Save Timetable</button>
+    <div id="save-status"></div>
+</div>
+
+</div>
+<script src="firebase-app-compat.js"></script>
+<script src="firebase-firestore-compat.js"></script>
+<script src="firebase.js"></script>
+<script src="script.js?v=2"></script>
+<script>
+    var DAYS    = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+    var PERIODS = ['Period 1', 'Period 2', 'Period 3', 'Period 4', 'Period 5', 'Period 6', 'Period 7'];
+
+    var existingDocId = null; // Firestore doc ID if one already exists
+
+    document.addEventListener('DOMContentLoaded', function() {
+        var role = checkAuth();
+        if (role !== 'admin') {
+            alert('Admin access required.');
+            goTo('teacher-dashboard.html');
+            return;
+        }
+    });
+
+    function onClassChange() {
+        var cls = document.getElementById('sel-class').value;
+        var streamSel = document.getElementById('sel-stream');
+        if (cls === 'Form 3' || cls === 'Form 4') {
+            streamSel.style.display = 'block';
+        } else {
+            streamSel.style.display = 'none';
+            streamSel.value = '';
+        }
+    }
+
+    function loadTimetable() {
+        var cls    = document.getElementById('sel-class').value;
+        var stream = document.getElementById('sel-stream').value || null;
+
+        if (!cls) { alert('Please select a class.'); return; }
+        if ((cls === 'Form 3' || cls === 'Form 4') && !stream) {
+            alert('Please select a stream for ' + cls + '.');
+            return;
+        }
+
+        existingDocId = null;
+
+        var label = stream ? cls + ' — ' + stream : cls;
+        document.getElementById('timetable-label').textContent = 'Editing: ' + label;
+
+        var query = db.collection('timetable').where('class', '==', cls);
+        if (stream) {
+            query = query.where('stream', '==', stream);
+        } else {
+            query = query.where('stream', '==', null);
+        }
+
+        query.get().then(function(snap) {
+            var schedule = {};
+            if (!snap.empty) {
+                existingDocId = snap.docs[0].id;
+                schedule = snap.docs[0].data().schedule || {};
+            }
+            buildTable(schedule);
+            document.getElementById('timetable-area').style.display = 'block';
+            document.getElementById('save-status').textContent = '';
+            document.getElementById('save-status').className = '';
+        }).catch(function(err) {
+            alert('Error loading timetable: ' + err.message);
+        });
+    }
+
+    function buildTable(schedule) {
+        var table = document.getElementById('timetable-table');
+        table.innerHTML = '';
+
+        // Header
+        var thead = document.createElement('thead');
+        var hrow = document.createElement('tr');
+        var cornerTh = document.createElement('th');
+        cornerTh.textContent = 'Period';
+        cornerTh.className = 'period-col';
+        hrow.appendChild(cornerTh);
+        DAYS.forEach(function(day) {
+            var th = document.createElement('th');
+            th.textContent = day;
+            hrow.appendChild(th);
+        });
+        thead.appendChild(hrow);
+        table.appendChild(thead);
+
+        // Body
+        var tbody = document.createElement('tbody');
+        PERIODS.forEach(function(period) {
+            var tr = document.createElement('tr');
+
+            var labelTd = document.createElement('td');
+            labelTd.className = 'period-label';
+            labelTd.textContent = period;
+            tr.appendChild(labelTd);
+
+            DAYS.forEach(function(day) {
+                var td = document.createElement('td');
+
+                var cell = (schedule[day] && schedule[day][period]) || {};
+
+                var subjInput = document.createElement('input');
+                subjInput.type = 'text';
+                subjInput.placeholder = 'Subject';
+                subjInput.value = cell.subject || '';
+                subjInput.dataset.day = day;
+                subjInput.dataset.period = period;
+                subjInput.dataset.field = 'subject';
+
+                var teacherInput = document.createElement('input');
+                teacherInput.type = 'text';
+                teacherInput.className = 'teacher-input';
+                teacherInput.placeholder = 'Teacher';
+                teacherInput.value = cell.teacher || '';
+                teacherInput.dataset.day = day;
+                teacherInput.dataset.period = period;
+                teacherInput.dataset.field = 'teacher';
+
+                td.appendChild(subjInput);
+                td.appendChild(teacherInput);
+                tr.appendChild(td);
+            });
+
+            tbody.appendChild(tr);
+        });
+        table.appendChild(tbody);
+    }
+
+    function saveTimetable() {
+        var cls    = document.getElementById('sel-class').value;
+        var stream = document.getElementById('sel-stream').value || null;
+
+        var statusEl = document.getElementById('save-status');
+        statusEl.textContent = 'Saving...';
+        statusEl.className = '';
+
+        // Collect schedule from inputs
+        var schedule = {};
+        var inputs = document.getElementById('timetable-table').querySelectorAll('input[type="text"]');
+        inputs.forEach(function(input) {
+            var day    = input.dataset.day;
+            var period = input.dataset.period;
+            var field  = input.dataset.field;
+            if (!schedule[day]) schedule[day] = {};
+            if (!schedule[day][period]) schedule[day][period] = {};
+            schedule[day][period][field] = input.value.trim();
+        });
+
+        var docData = {
+            class:    cls,
+            stream:   stream,
+            schedule: schedule
+        };
+
+        var promise;
+        if (existingDocId) {
+            promise = db.collection('timetable').doc(existingDocId).set(docData);
+        } else {
+            promise = db.collection('timetable').add(docData).then(function(ref) {
+                existingDocId = ref.id;
+            });
+        }
+
+        promise.then(function() {
+            statusEl.textContent = 'Timetable saved successfully!';
+            statusEl.className = 'ok';
+        }).catch(function(err) {
+            statusEl.textContent = 'Error saving: ' + err.message;
+            statusEl.className = 'err';
+        });
+    }
+</script>
+<script>if("serviceWorker" in navigator){navigator.serviceWorker.register("service-worker.js");}</script>
+</body>
+</html>
