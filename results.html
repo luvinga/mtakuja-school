@@ -9,35 +9,70 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-        /* ── Result slip styles ── */
-        .result-header {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 10px;
+        /* ── Letterhead ── */
+        .letterhead {
+            text-align: center;
+            padding-bottom: 10px;
         }
-        .result-header img {
-            width: 60px;
-            height: 60px;
+        .letterhead img {
+            width: 70px;
+            height: 70px;
             border-radius: 50%;
             object-fit: cover;
             border: 2px solid #4CAF50;
-            flex-shrink: 0;
+            display: block;
+            margin: 0 auto 6px;
         }
-        .result-header-text h3 {
-            margin: 0;
-            font-size: 15px;
-            color: #2e7d32;
+        .letterhead h2 {
+            margin: 0 0 2px;
+            font-size: 16px;
+            color: #1b5e20;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
-        .result-header-text p {
-            margin: 2px 0;
-            font-size: 12px;
+        .letterhead .school-address {
+            font-size: 11px;
             color: #555;
+            line-height: 1.6;
+            margin: 0;
         }
         .slip-divider {
             border: none;
             border-top: 2px solid #4CAF50;
-            margin: 8px 0 12px 0;
+            margin: 8px 0 10px 0;
+        }
+        .slip-meta {
+            font-size: 12px;
+            color: #444;
+            margin-bottom: 8px;
+        }
+        .slip-meta span {
+            display: inline-block;
+            margin-right: 14px;
+        }
+        /* ── Signature footer ── */
+        .slip-footer {
+            margin-top: 18px;
+            border-top: 1px solid #ccc;
+            padding-top: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            font-size: 11px;
+            color: #444;
+        }
+        .slip-footer .sig-block {
+            text-align: center;
+        }
+        .slip-footer .sig-block img {
+            height: 40px;
+            display: block;
+            margin: 0 auto 4px;
+        }
+        .slip-footer .sig-line {
+            border-top: 1px solid #333;
+            width: 140px;
+            margin: 4px auto 2px;
         }
         .result-table {
             width: 100%;
@@ -140,21 +175,38 @@
 
 <button class="back-btn" onclick="goBack()">← Back</button>
 
-<!-- School header -->
-<div class="result-header">
+<!-- Letterhead -->
+<div class="letterhead">
     <img src="mtakuja.png" alt="School Logo">
-    <div class="result-header-text">
-        <h3>Mtakuja Beach Sec School</h3>
-        <p id="slip-student-name">Student: —</p>
-        <p id="slip-class">Class: —</p>
-        <p id="slip-year">Academic Year: —</p>
-    </div>
+    <h2>Mtakuja Beach Secondary School</h2>
+    <p class="school-address">
+        Kunduchi Beach, Kinondoni Municipality, Dar es Salaam, Tanzania<br>
+        P.O. Box 66500, Dar es Salaam &nbsp;|&nbsp; Tel: +255 654 995 533
+    </p>
 </div>
 <hr class="slip-divider">
+
+<div class="slip-meta">
+    <span id="slip-student-name">Student: —</span>
+    <span id="slip-class">Class: —</span>
+    <span id="slip-year">Year: —</span>
+</div>
 
 <div id="result-content"><p style="text-align:center;color:#666;">Loading result...</p></div>
 
 <div id="conduct-display"></div>
+
+<div id="slip-footer" style="display:none;" class="slip-footer">
+    <div class="sig-block">
+        <img src="signature.png" alt="Signature" onerror="this.style.display='none'">
+        <div class="sig-line"></div>
+        <strong>Mr. Bernard Kazimoto</strong><br>Head of School
+    </div>
+    <div style="font-size:11px; color:#888; text-align:right;">
+        Official School Result Slip<br>
+        <span id="slip-date-issued"></span>
+    </div>
+</div>
 
 <div id="action-btns">
     <button class="print-btn" onclick="window.print()" id="print-btn" style="display:none;">Print Result Slip</button>
@@ -201,7 +253,9 @@
 
         document.getElementById('slip-student-name').textContent = 'Student: ' + student;
         document.getElementById('slip-class').textContent = 'Class: ' + classLabel;
-        document.getElementById('slip-year').textContent = 'Academic Year: ' + currentYear;
+        document.getElementById('slip-year').textContent = 'Year: ' + currentYear;
+        document.getElementById('slip-date-issued').textContent =
+            'Issued: ' + new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
 
         // Get subjects for this class/stream
         let subjects = [];
@@ -217,17 +271,31 @@
             return;
         }
 
-        db.collection('grades')
-            .where('class', '==', cls)
-            .where('stream', '==', stream)
-            .get()
-            .then(function(snapshot) {
+        // Load teachers and grades in parallel
+        Promise.all([
+            db.collection('teachers').get(),
+            db.collection('grades').where('class', '==', cls).where('stream', '==', stream).get()
+        ]).then(function(results) {
+                var teacherSnap = results[0];
+                var gradeSnap   = results[1];
+
+                // Build subject → teacher map for this form
+                var subjectTeacher = {};
+                teacherSnap.forEach(function(doc) {
+                    var t = doc.data();
+                    if (!t.subject || !t.forms) return;
+                    if (t.forms.includes(cls)) {
+                        if (!subjectTeacher[t.subject]) {
+                            subjectTeacher[t.subject] = { name: t.name, phone: t.phone };
+                        }
+                    }
+                });
+
                 // Build: subjectGrades[subject][examType] = latest grade string
                 var subjectGrades = {};
                 subjects.forEach(function(s) { subjectGrades[s] = {}; });
 
-                // Sort ascending by date client-side (avoids composite index requirement)
-                var docs = snapshot.docs.slice().sort(function(a, b) {
+                var docs = gradeSnap.docs.slice().sort(function(a, b) {
                     var da = a.data().date || '';
                     var db2 = b.data().date || '';
                     return da < db2 ? -1 : da > db2 ? 1 : 0;
@@ -239,7 +307,6 @@
                     var examType = record.examType || '';
                     if (!examType) return;
                     if (!subjectGrades[record.subject]) subjectGrades[record.subject] = {};
-                    // Last (asc ordered) wins per exam type per subject
                     subjectGrades[record.subject][examType] = record.grades[student];
                 });
 
@@ -268,7 +335,8 @@
                         subject: subject,
                         examGrades: examGrades,
                         finalGrade: finalGrade,
-                        finalPts: finalPts
+                        finalPts: finalPts,
+                        teacher: subjectTeacher[subject] || null
                     });
                 });
 
@@ -278,7 +346,7 @@
                 EXAM_TYPES.forEach(function(et) {
                     html += '<th>' + EXAM_SHORT[et] + '</th>';
                 });
-                html += '<th>Final</th><th>Pts</th></tr></thead><tbody>';
+                html += '<th>Final</th><th>Pts</th><th>Teacher</th><th>Contact</th></tr></thead><tbody>';
 
                 tableRows.forEach(function(row) {
                     html += '<tr>';
@@ -291,6 +359,8 @@
                         (row.finalGrade || '<span class="no-grade">—</span>') + '</td>';
                     html += '<td>' +
                         (row.finalPts !== '' ? row.finalPts : '<span class="no-grade">—</span>') + '</td>';
+                    html += '<td>' + (row.teacher ? row.teacher.name : '<span class="no-grade">—</span>') + '</td>';
+                    html += '<td>' + (row.teacher ? row.teacher.phone : '<span class="no-grade">—</span>') + '</td>';
                     html += '</tr>';
                 });
 
@@ -312,6 +382,7 @@
 
                 document.getElementById('result-content').innerHTML = html;
                 loadConductForSlip(cls, stream, student);
+                document.getElementById('slip-footer').style.display = 'flex';
                 document.getElementById('print-btn').style.display = 'block';
             })
             .catch(function(err) {
