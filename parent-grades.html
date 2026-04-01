@@ -38,6 +38,39 @@
         .grades-table tr:nth-child(even) { background: #f9f9f9; }
         .no-grade { color: #aaa; font-style: italic; }
         .final-grade { font-weight: bold; color: #333; }
+        .conduct-section {
+            margin-top: 20px;
+        }
+        .conduct-section h3 {
+            font-size: 14px;
+            color: #2e7d32;
+            margin-bottom: 6px;
+        }
+        .conduct-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+            margin-bottom: 10px;
+        }
+        .conduct-table th {
+            background: #66BB6A;
+            color: white;
+            padding: 5px 3px;
+            text-align: center;
+        }
+        .conduct-table th:first-child { text-align: left; padding-left: 6px; }
+        .conduct-table td {
+            padding: 5px 3px;
+            border-bottom: 1px solid #e0e0e0;
+            text-align: center;
+        }
+        .conduct-table td:first-child { text-align: left; padding-left: 6px; }
+        .conduct-table tr:nth-child(even) { background: #f9f9f9; }
+        .rating-5 { color: #2e7d32; font-weight: bold; }
+        .rating-4 { color: #388e3c; }
+        .rating-3 { color: #f57c00; }
+        .rating-2 { color: #d32f2f; }
+        .rating-1 { color: #b71c1c; font-weight: bold; }
         .summary-box {
             margin-top: 14px;
             background: #f0f7f0;
@@ -78,6 +111,8 @@
 
 <div id="grades-display"><p>Loading...</p></div>
 
+<div id="conduct-display"></div>
+
 <button class="print-btn" onclick="window.print()" style="display:none;" id="print-btn">Print Report</button>
 
 </div>
@@ -116,7 +151,6 @@
         db.collection('grades')
             .where('class', '==', cls)
             .where('stream', '==', stream)
-            .orderBy('date', 'asc')
             .get()
             .then(function(snapshot) {
                 // Build: subjectGrades[subject][examType] = latest grade for this student
@@ -125,7 +159,14 @@
                     subjectGrades[s] = {};
                 });
 
-                snapshot.forEach(function(doc) {
+                // Sort ascending by date client-side (avoids composite index requirement)
+                var docs = snapshot.docs.slice().sort(function(a, b) {
+                    var da = a.data().date || '';
+                    var db2 = b.data().date || '';
+                    return da < db2 ? -1 : da > db2 ? 1 : 0;
+                });
+
+                docs.forEach(function(doc) {
                     const record = doc.data();
                     if (!record.subject || !record.grades || record.grades[student] === undefined) return;
                     const examType = record.examType || '';
@@ -190,12 +231,93 @@
                 }
 
                 display.innerHTML = html;
+
+                // Load conduct ratings
+                loadConductForStudent(cls, stream, student);
+
                 document.getElementById('print-btn').style.display = 'block';
             })
             .catch(function(err) {
                 display.innerHTML = '<p style="color:red;">Error loading grades: ' + err.message + '</p>';
             });
     });
+
+    var CONDUCT_CATEGORIES = ['Cleanliness', 'Behaviour', 'Punctuality', 'Community Engagement', 'Respect'];
+    var EXAM_SHORT_CONDUCT = { 'Mid Term 1': 'Mid T1', 'Terminal 1': 'Term 1', 'Mid Term 2': 'Mid T2', 'Terminal 2': 'Term 2' };
+    var CONDUCT_TERMS = ['Mid Term 1', 'Terminal 1', 'Mid Term 2', 'Terminal 2'];
+
+    function ratingClass(r) {
+        if (!r) return '';
+        return 'rating-' + r;
+    }
+
+    function loadConductForStudent(cls, stream, student) {
+        db.collection('conduct')
+            .where('class', '==', cls)
+            .where('stream', '==', stream)
+            .get()
+            .then(function(snapshot) {
+                if (snapshot.empty) return;
+
+                // Build: catRatings[category][term] = latest rating
+                var catRatings = {};
+                CONDUCT_CATEGORIES.forEach(function(c) { catRatings[c] = {}; });
+
+                // Sort by date asc, last record wins per term
+                var docs = snapshot.docs.slice().sort(function(a, b) {
+                    var da = a.data().date || '';
+                    var db2 = b.data().date || '';
+                    return da < db2 ? -1 : da > db2 ? 1 : 0;
+                });
+
+                docs.forEach(function(doc) {
+                    var rec = doc.data();
+                    var term = rec.term || '';
+                    if (!term || !rec.conduct || !rec.conduct[student]) return;
+                    var ratings = rec.conduct[student];
+                    CONDUCT_CATEGORIES.forEach(function(cat) {
+                        if (ratings[cat] != null) {
+                            catRatings[cat][term] = ratings[cat];
+                        }
+                    });
+                });
+
+                // Check if any data exists
+                var hasData = CONDUCT_CATEGORIES.some(function(cat) {
+                    return Object.keys(catRatings[cat]).length > 0;
+                });
+                if (!hasData) return;
+
+                var html = '<div class="conduct-section">';
+                html += '<h3>Conduct & Behaviour</h3>';
+                html += '<table class="conduct-table"><thead><tr>';
+                html += '<th>Category</th>';
+                CONDUCT_TERMS.forEach(function(t) {
+                    html += '<th>' + EXAM_SHORT_CONDUCT[t] + '</th>';
+                });
+                html += '</tr></thead><tbody>';
+
+                CONDUCT_CATEGORIES.forEach(function(cat) {
+                    html += '<tr><td>' + cat + '</td>';
+                    CONDUCT_TERMS.forEach(function(t) {
+                        var r = catRatings[cat][t];
+                        if (r != null) {
+                            html += '<td class="' + ratingClass(r) + '">' + r + '</td>';
+                        } else {
+                            html += '<td><span class="no-grade">—</span></td>';
+                        }
+                    });
+                    html += '</tr>';
+                });
+
+                html += '</tbody></table>';
+                html += '<p style="font-size:11px;color:#888;">Rating: 5=Excellent, 4=Good, 3=Average, 2=Poor, 1=Very Poor</p>';
+                html += '</div>';
+
+                document.getElementById('conduct-display').innerHTML = html;
+            })
+            .catch(function() {}); // Silently ignore if conduct collection not yet created
+    }
 </script>
 <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("service-worker.js");}</script>
 </body>

@@ -87,6 +87,33 @@
             text-align: center;
             padding: 20px 0;
         }
+        .conduct-section { margin-top: 14px; }
+        .conduct-section h3 { font-size: 13px; color: #2e7d32; margin-bottom: 6px; }
+        .conduct-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 10px;
+            margin-bottom: 8px;
+        }
+        .conduct-table th {
+            background: #66BB6A;
+            color: white;
+            padding: 4px 3px;
+            text-align: center;
+        }
+        .conduct-table th:first-child { text-align: left; padding-left: 6px; }
+        .conduct-table td {
+            padding: 4px 3px;
+            border-bottom: 1px solid #e0e0e0;
+            text-align: center;
+        }
+        .conduct-table td:first-child { text-align: left; padding-left: 6px; }
+        .conduct-table tr:nth-child(even) { background: #f9f9f9; }
+        .rating-5 { color: #2e7d32; font-weight: bold; }
+        .rating-4 { color: #388e3c; }
+        .rating-3 { color: #f57c00; }
+        .rating-2 { color: #d32f2f; }
+        .rating-1 { color: #b71c1c; font-weight: bold; }
         /* ── Print styles ── */
         @media print {
             .back-btn,
@@ -126,6 +153,8 @@
 <hr class="slip-divider">
 
 <div id="result-content"><p style="text-align:center;color:#666;">Loading result...</p></div>
+
+<div id="conduct-display"></div>
 
 <div id="action-btns">
     <button class="print-btn" onclick="window.print()" id="print-btn" style="display:none;">Print Result Slip</button>
@@ -191,14 +220,20 @@
         db.collection('grades')
             .where('class', '==', cls)
             .where('stream', '==', stream)
-            .orderBy('date', 'asc')
             .get()
             .then(function(snapshot) {
                 // Build: subjectGrades[subject][examType] = latest grade string
                 var subjectGrades = {};
                 subjects.forEach(function(s) { subjectGrades[s] = {}; });
 
-                snapshot.forEach(function(doc) {
+                // Sort ascending by date client-side (avoids composite index requirement)
+                var docs = snapshot.docs.slice().sort(function(a, b) {
+                    var da = a.data().date || '';
+                    var db2 = b.data().date || '';
+                    return da < db2 ? -1 : da > db2 ? 1 : 0;
+                });
+
+                docs.forEach(function(doc) {
                     var record = doc.data();
                     if (!record.subject || !record.grades || record.grades[student] === undefined) return;
                     var examType = record.examType || '';
@@ -276,6 +311,7 @@
                 }
 
                 document.getElementById('result-content').innerHTML = html;
+                loadConductForSlip(cls, stream, student);
                 document.getElementById('print-btn').style.display = 'block';
             })
             .catch(function(err) {
@@ -283,6 +319,68 @@
                     '<p style="color:red;">Error loading results: ' + err.message + '</p>';
             });
     });
+
+    var CONDUCT_CATEGORIES = ['Cleanliness', 'Behaviour', 'Punctuality', 'Community Engagement', 'Respect'];
+    var CONDUCT_TERMS = ['Mid Term 1', 'Terminal 1', 'Mid Term 2', 'Terminal 2'];
+    var TERM_SHORT = { 'Mid Term 1': 'Mid T1', 'Terminal 1': 'Term 1', 'Mid Term 2': 'Mid T2', 'Terminal 2': 'Term 2' };
+
+    function loadConductForSlip(cls, stream, student) {
+        db.collection('conduct')
+            .where('class', '==', cls)
+            .where('stream', '==', stream)
+            .get()
+            .then(function(snapshot) {
+                if (snapshot.empty) return;
+
+                var catRatings = {};
+                CONDUCT_CATEGORIES.forEach(function(c) { catRatings[c] = {}; });
+
+                var docs = snapshot.docs.slice().sort(function(a, b) {
+                    var da = a.data().date || '';
+                    var db2 = b.data().date || '';
+                    return da < db2 ? -1 : da > db2 ? 1 : 0;
+                });
+
+                docs.forEach(function(doc) {
+                    var rec = doc.data();
+                    var term = rec.term || '';
+                    if (!term || !rec.conduct || !rec.conduct[student]) return;
+                    var ratings = rec.conduct[student];
+                    CONDUCT_CATEGORIES.forEach(function(cat) {
+                        if (ratings[cat] != null) catRatings[cat][term] = ratings[cat];
+                    });
+                });
+
+                var hasData = CONDUCT_CATEGORIES.some(function(cat) {
+                    return Object.keys(catRatings[cat]).length > 0;
+                });
+                if (!hasData) return;
+
+                var html = '<div class="conduct-section">';
+                html += '<h3>Conduct & Behaviour</h3>';
+                html += '<table class="conduct-table"><thead><tr><th>Category</th>';
+                CONDUCT_TERMS.forEach(function(t) { html += '<th>' + TERM_SHORT[t] + '</th>'; });
+                html += '</tr></thead><tbody>';
+
+                CONDUCT_CATEGORIES.forEach(function(cat) {
+                    html += '<tr><td>' + cat + '</td>';
+                    CONDUCT_TERMS.forEach(function(t) {
+                        var r = catRatings[cat][t];
+                        html += r != null
+                            ? '<td class="rating-' + r + '">' + r + '</td>'
+                            : '<td><span class="no-grade">—</span></td>';
+                    });
+                    html += '</tr>';
+                });
+
+                html += '</tbody></table>';
+                html += '<p style="font-size:10px;color:#888;">5=Excellent, 4=Good, 3=Average, 2=Poor, 1=Very Poor</p>';
+                html += '</div>';
+
+                document.getElementById('conduct-display').innerHTML = html;
+            })
+            .catch(function() {});
+    }
 </script>
 <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("service-worker.js");}</script>
 </body>

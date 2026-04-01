@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Enter Conduct</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4CAF50">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        .selector-row {
+            margin-bottom: 10px;
+        }
+        .selector-row label {
+            display: block;
+            margin-bottom: 4px;
+        }
+        .selector-row select {
+            width: 100%;
+            padding: 8px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            font-size: 14px;
+        }
+        .conduct-card {
+            background: #f9f9f9;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+        .conduct-card .student-label {
+            font-weight: bold;
+            font-size: 15px;
+            margin-bottom: 8px;
+            display: block;
+            color: #2e7d32;
+        }
+        .conduct-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+        .conduct-row label {
+            font-size: 13px;
+            color: #444;
+            flex: 1;
+        }
+        .conduct-row select {
+            width: 140px;
+            padding: 4px 6px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            font-size: 13px;
+            background: #fff;
+        }
+    </style>
+</head>
+<body>
+<div class="app-container">
+
+<button class="back-btn" onclick="goBack()">← Back</button>
+
+<h2 id="conduct-title">Enter Conduct</h2>
+
+<div class="selector-row">
+    <label for="term-select">Select Term:</label>
+    <select id="term-select" onchange="updateTitle()">
+        <option value="Mid Term 1">Mid Term 1</option>
+        <option value="Terminal 1">Terminal 1</option>
+        <option value="Mid Term 2">Mid Term 2</option>
+        <option value="Terminal 2">Terminal 2</option>
+    </select>
+</div>
+
+<p id="loading-msg" style="text-align:center; color:#666;">Loading students...</p>
+<div id="conduct-list"></div>
+
+<br>
+<button id="save-btn" onclick="saveConductRatings()" style="display:none;">Save Conduct</button>
+
+</div>
+<script src="firebase-app-compat.js"></script>
+<script src="firebase-firestore-compat.js"></script>
+<script src="firebase.js"></script>
+<script src="script.js?v=2"></script>
+<script>
+    var CONDUCT_CATEGORIES = ['Cleanliness', 'Behaviour', 'Punctuality', 'Community Engagement', 'Respect'];
+    var RATING_OPTIONS = [
+        { value: '', label: '— Rate —' },
+        { value: '5', label: '5 — Excellent' },
+        { value: '4', label: '4 — Good' },
+        { value: '3', label: '3 — Average' },
+        { value: '2', label: '2 — Poor' },
+        { value: '1', label: '1 — Very Poor' }
+    ];
+
+    var loadedStudents = [];
+    var classLabel = '';
+
+    function updateTitle() {
+        var term = document.getElementById('term-select').value;
+        document.getElementById('conduct-title').textContent = 'Conduct — ' + classLabel + ' (' + term + ')';
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        var cls = getSelectedClass();
+        if (!cls) { goTo('teacher-dashboard.html'); return; }
+        var stream = getSelectedStream();
+        classLabel = stream ? cls + ' ' + stream : cls;
+        updateTitle();
+
+        loadStudentsForClass(cls, stream || null)
+            .then(function(students) {
+                document.getElementById('loading-msg').style.display = 'none';
+
+                if (students.length === 0) {
+                    document.getElementById('loading-msg').textContent = 'No students found for this class.';
+                    document.getElementById('loading-msg').style.display = 'block';
+                    return;
+                }
+
+                students.sort(function(a, b) { return a.name.localeCompare(b.name); });
+                loadedStudents = students;
+                renderConductList();
+                document.getElementById('save-btn').style.display = 'block';
+            })
+            .catch(function(err) {
+                document.getElementById('loading-msg').textContent = 'Error loading students: ' + err.message;
+            });
+    });
+
+    function renderConductList() {
+        var list = document.getElementById('conduct-list');
+        list.innerHTML = '';
+        loadedStudents.forEach(function(student) {
+            var card = document.createElement('div');
+            card.className = 'conduct-card';
+            card.setAttribute('data-student', student.name);
+
+            var nameSpan = document.createElement('span');
+            nameSpan.className = 'student-label';
+            nameSpan.textContent = student.name;
+            card.appendChild(nameSpan);
+
+            CONDUCT_CATEGORIES.forEach(function(cat) {
+                var row = document.createElement('div');
+                row.className = 'conduct-row';
+
+                var label = document.createElement('label');
+                label.textContent = cat;
+
+                var select = document.createElement('select');
+                select.setAttribute('data-category', cat);
+                RATING_OPTIONS.forEach(function(opt) {
+                    var o = document.createElement('option');
+                    o.value = opt.value;
+                    o.textContent = opt.label;
+                    select.appendChild(o);
+                });
+
+                row.appendChild(label);
+                row.appendChild(select);
+                card.appendChild(row);
+            });
+
+            list.appendChild(card);
+        });
+    }
+
+    function saveConductRatings() {
+        var cls = getSelectedClass();
+        var stream = getSelectedStream();
+        var term = document.getElementById('term-select').value;
+        var date = new Date().toISOString().split('T')[0];
+
+        var conduct = {};
+        document.querySelectorAll('#conduct-list .conduct-card').forEach(function(card) {
+            var studentName = card.getAttribute('data-student');
+            conduct[studentName] = {};
+            card.querySelectorAll('select[data-category]').forEach(function(sel) {
+                var cat = sel.getAttribute('data-category');
+                conduct[studentName][cat] = sel.value ? parseInt(sel.value) : null;
+            });
+        });
+
+        var record = {
+            class: cls,
+            stream: stream || null,
+            term: term,
+            date: date,
+            conduct: conduct,
+            timestamp: new Date().toISOString()
+        };
+
+        db.collection('conduct').add(record)
+            .then(function() { alert('Conduct saved!'); })
+            .catch(function(err) { alert('Error saving conduct: ' + err.message); });
+    }
+</script>
+<script>if("serviceWorker" in navigator){navigator.serviceWorker.register("service-worker.js");}</script>
+</body>
+</html>
