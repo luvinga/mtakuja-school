@@ -74,7 +74,14 @@
                     localStorage.setItem('role', teacher.role === 'admin' ? 'admin' : 'teacher');
                     localStorage.setItem('teacherPhone', phone);
                     localStorage.setItem('teacherData', JSON.stringify(teacher));
-                    goTo('teacher-dashboard.html');
+                    if (!teacher.passwordChanged) {
+                        localStorage.setItem('forcePasswordChange', 'true');
+                        localStorage.setItem('changePasswordPhone', phone);
+                        localStorage.setItem('changePasswordCollection', 'teachers');
+                        goTo('change-password.html');
+                    } else {
+                        goTo('teacher-dashboard.html');
+                    }
                 })
                 .catch(function(err) { showError('Error: ' + err.message); });
 
@@ -88,7 +95,14 @@
                     localStorage.setItem('student', student.name);
                     localStorage.setItem('studentClass', student.form);
                     localStorage.setItem('studentStream', student.stream || '');
-                    goTo('parent-dashboard.html');
+                    if (!student.passwordChanged) {
+                        localStorage.setItem('forcePasswordChange', 'true');
+                        localStorage.setItem('changePasswordPhone', phone);
+                        localStorage.setItem('changePasswordCollection', 'students');
+                        goTo('change-password.html');
+                    } else {
+                        goTo('parent-dashboard.html');
+                    }
                 })
                 .catch(function(err) { showError('Error: ' + err.message); });
 

@@ -176,6 +176,7 @@ function viewProfile(student) {
 }
 
 function logout() {
-    ['role', 'teacherPhone', 'teacherData', 'student', 'selectedClass', 'selectedStream', 'studentClass', 'studentStream'].forEach(k => localStorage.removeItem(k));
+    ['role', 'teacherPhone', 'teacherData', 'student', 'selectedClass', 'selectedStream', 'studentClass', 'studentStream',
+     'forcePasswordChange', 'changePasswordPhone', 'changePasswordCollection'].forEach(k => localStorage.removeItem(k));
     goTo('index.html');
 }

@@ -78,6 +78,19 @@
             font-size: 13px;
             min-width: 70px;
         }
+        .reset-btn {
+            background: #FF9800;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            min-width: 70px;
+            margin-right: 6px;
+        }
+        .reset-btn:hover { background: #e65100; }
+        .btn-group { display: flex; gap: 6px; }
         .status-msg { margin-top: 8px; font-size: 13px; }
         .status-msg.ok  { color: green; }
         .status-msg.err { color: red; }
@@ -243,13 +256,14 @@
         const classTeacher = ctForm ? { form: ctForm, stream: ctStream } : null;
 
         const doc = {
-            name:         document.getElementById('t-name').value.trim(),
-            phone:        phone,
-            password:     document.getElementById('t-password').value,
-            role:         document.getElementById('t-role').value,
-            subject:      document.getElementById('t-subject').value.trim() || null,
-            forms:        forms,
-            classTeacher: classTeacher
+            name:            document.getElementById('t-name').value.trim(),
+            phone:           phone,
+            password:        document.getElementById('t-password').value,
+            role:            document.getElementById('t-role').value,
+            subject:         document.getElementById('t-subject').value.trim() || null,
+            forms:           forms,
+            classTeacher:    classTeacher,
+            passwordChanged: false
         };
 
         statusEl.textContent = 'Saving...';
@@ -287,11 +301,12 @@
         if (!parentPhone) { statusEl.textContent = 'Parent phone is required.'; statusEl.className = 'status-msg err'; return; }
 
         const doc = {
-            name:           document.getElementById('s-name').value.trim(),
-            form:           form,
-            stream:         stream,
-            parentPhone:    parentPhone,
-            parentPassword: document.getElementById('s-parent-password').value
+            name:            document.getElementById('s-name').value.trim(),
+            form:            form,
+            stream:          stream,
+            parentPhone:     parentPhone,
+            parentPassword:  document.getElementById('s-parent-password').value,
+            passwordChanged: false
         };
 
         statusEl.textContent = 'Saving...';
@@ -337,13 +352,23 @@
                     info.appendChild(strong);
                     info.appendChild(small);
 
+                    const btnGroup = document.createElement('div');
+                    btnGroup.className = 'btn-group';
+
+                    const resetBtn = document.createElement('button');
+                    resetBtn.className = 'reset-btn';
+                    resetBtn.textContent = 'Reset Password';
+                    resetBtn.onclick = function() { resetTeacherPassword(t.phone, t.name); };
+
                     const delBtn = document.createElement('button');
                     delBtn.className = 'delete-btn';
                     delBtn.textContent = 'Delete';
                     delBtn.onclick = function() { deleteTeacher(t.phone, t.name); };
 
+                    btnGroup.appendChild(resetBtn);
+                    btnGroup.appendChild(delBtn);
                     item.appendChild(info);
-                    item.appendChild(delBtn);
+                    item.appendChild(btnGroup);
                     container.appendChild(item);
                 });
             })
@@ -393,13 +418,23 @@
                         info.appendChild(strong);
                         info.appendChild(small);
 
+                        const sBtnGroup = document.createElement('div');
+                        sBtnGroup.className = 'btn-group';
+
+                        const sResetBtn = document.createElement('button');
+                        sResetBtn.className = 'reset-btn';
+                        sResetBtn.textContent = 'Reset Password';
+                        sResetBtn.onclick = function() { resetStudentPassword(s.parentPhone, s.name); };
+
                         const delBtn = document.createElement('button');
                         delBtn.className = 'delete-btn';
                         delBtn.textContent = 'Delete';
                         delBtn.onclick = function() { deleteStudent(s.parentPhone, s.name); };
 
+                        sBtnGroup.appendChild(sResetBtn);
+                        sBtnGroup.appendChild(delBtn);
                         item.appendChild(info);
-                        item.appendChild(delBtn);
+                        item.appendChild(sBtnGroup);
                         container.appendChild(item);
                     });
                 });
@@ -423,6 +458,26 @@
         db.collection('students').doc(parentPhone).delete()
             .then(function() { loadStudentsList(); })
             .catch(function(err) { alert('Error deleting student: ' + err.message); });
+    }
+
+    // ── Reset Teacher Password ──────────────────────────────────────────────────
+    function resetTeacherPassword(phone, name) {
+        if (!confirm('Reset password for "' + name + '"? They will be asked to set a new password on next login.')) return;
+        db.collection('teachers').doc(phone).update({ passwordChanged: false })
+            .then(function() {
+                alert('Password reset. User will be asked to set a new password on next login.');
+            })
+            .catch(function(err) { alert('Error resetting password: ' + err.message); });
+    }
+
+    // ── Reset Student (Parent) Password ────────────────────────────────────────
+    function resetStudentPassword(parentPhone, name) {
+        if (!confirm('Reset password for parent of "' + name + '"? They will be asked to set a new password on next login.')) return;
+        db.collection('students').doc(parentPhone).update({ passwordChanged: false })
+            .then(function() {
+                alert('Password reset. User will be asked to set a new password on next login.');
+            })
+            .catch(function(err) { alert('Error resetting password: ' + err.message); });
     }
 </script>
 <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("service-worker.js");}</script>
