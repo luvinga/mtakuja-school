@@ -132,6 +132,23 @@ function saveAttendance() {
     db.collection('attendance').add(record)
         .then(function() {
             alert('Attendance Saved!');
+            db.collection('students').where('form', '==', cls)
+                .get().then(function(snap) {
+                    snap.forEach(function(doc) {
+                        var s = doc.data();
+                        if (s.parentPhone && attendance[s.name] === 'Absent') {
+                            db.collection('notifications').add({
+                                parentPhone: s.parentPhone,
+                                studentName: s.name,
+                                type: 'attendance',
+                                message: s.name + ' was marked absent today',
+                                date: new Date().toISOString().split('T')[0],
+                                timestamp: new Date().toISOString(),
+                                read: false
+                            });
+                        }
+                    });
+                }).catch(function(){});
             attendance = {};
         })
         .catch(function(err) {
@@ -195,6 +212,7 @@ function saveGrades() {
         .then(function() {
             alert('Grades Saved!');
             grades = {};
+            createNotifications(cls, stream, subject, examType);
         })
         .catch(function(err) {
             alert('Error saving grades: ' + err.message);
@@ -212,4 +230,68 @@ function logout() {
     ['role', 'teacherPhone', 'teacherData', 'student', 'selectedClass', 'selectedStream', 'studentClass', 'studentStream',
      'forcePasswordChange', 'changePasswordPhone', 'changePasswordCollection'].forEach(k => localStorage.removeItem(k));
     goTo('index.html');
+}
+
+// ─── Dark Mode ────────────────────────────────────────────────────────────────
+function initDarkMode() {
+    if (localStorage.getItem('darkMode') === 'on') {
+        document.body.classList.add('dark-mode');
+    }
+    var btn = document.createElement('button');
+    btn.className = 'dark-mode-toggle';
+    btn.title = 'Toggle dark mode';
+    btn.textContent = localStorage.getItem('darkMode') === 'on' ? '☀️' : '🌙';
+    btn.onclick = function() {
+        var isDark = document.body.classList.toggle('dark-mode');
+        localStorage.setItem('darkMode', isDark ? 'on' : 'off');
+        btn.textContent = isDark ? '☀️' : '🌙';
+    };
+    document.body.appendChild(btn);
+}
+document.addEventListener('DOMContentLoaded', initDarkMode);
+
+// ─── Language Toggle ──────────────────────────────────────────────────────────
+function initLangToggle() {
+    applyTranslations();
+    var btn = document.createElement('button');
+    btn.className = 'dark-mode-toggle';
+    btn.style.bottom = '72px';
+    btn.style.right = '20px';
+    btn.style.fontSize = '14px';
+    btn.title = 'Toggle language';
+    btn.textContent = getCurrentLang() === 'sw' ? 'EN' : 'SW';
+    btn.onclick = function() {
+        var newLang = getCurrentLang() === 'en' ? 'sw' : 'en';
+        localStorage.setItem('appLang', newLang);
+        btn.textContent = newLang === 'sw' ? 'EN' : 'SW';
+        applyTranslations();
+    };
+    document.body.appendChild(btn);
+}
+document.addEventListener('DOMContentLoaded', initLangToggle);
+
+// ─── Notifications Helper ─────────────────────────────────────────────────────
+function createNotifications(cls, stream, subject, examType) {
+    var query = db.collection('students').where('form', '==', cls);
+    if (stream) {
+        query = query.where('stream', '==', stream);
+    } else {
+        query = query.where('stream', '==', null);
+    }
+    query.get().then(function(snap) {
+        snap.forEach(function(doc) {
+            var s = doc.data();
+            if (s.parentPhone) {
+                db.collection('notifications').add({
+                    parentPhone: s.parentPhone,
+                    studentName: s.name,
+                    type: 'grades',
+                    message: subject + ' grades posted for ' + examType,
+                    date: new Date().toISOString().split('T')[0],
+                    timestamp: new Date().toISOString(),
+                    read: false
+                });
+            }
+        });
+    }).catch(function(){});
 }

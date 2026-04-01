@@ -8,7 +8,8 @@ const STATIC_ASSETS = [
   'mtakuja.png',
   'firebase.js',
   'firebase-app-compat.js',
-  'firebase-firestore-compat.js'
+  'firebase-firestore-compat.js',
+  'translations.js'
 ];
 
 self.addEventListener('install', event => {

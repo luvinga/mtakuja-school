@@ -235,6 +235,9 @@
         <label>Parent Phone <small style="font-weight:normal;color:#888;">(optional — can be assigned later)</small></label>
         <input type="tel" id="s-parent-phone" placeholder="e.g. 0714300399">
 
+        <label>Student Photo URL <small style="font-weight:normal;color:#888;">(optional — paste image URL or leave blank)</small></label>
+        <input type="text" id="s-photo" placeholder="https://... or leave blank">
+
         <button type="submit">Add Student</button>
         <div id="add-student-status" class="status-msg"></div>
     </form>
@@ -267,6 +270,7 @@
 <script src="firebase-app-compat.js"></script>
 <script src="firebase-firestore-compat.js"></script>
 <script src="firebase.js"></script>
+<script src="translations.js"></script>
 <script src="script.js?v=2"></script>
 <script>
     // ── Auth Guard ──────────────────────────────────────────────────────────────
@@ -354,7 +358,8 @@
             stream:          stream,
             parentPhone:     parentPhone || null,
             parentPassword:  parentPhone ? 'parent123' : null,
-            passwordChanged: false
+            passwordChanged: false,
+            photoUrl:        document.getElementById('s-photo').value.trim() || null
         };
 
         statusEl.textContent = 'Saving...';
@@ -526,6 +531,13 @@
                 info.className = 'item-info';
                 const strong = document.createElement('strong');
                 strong.textContent = s.name;
+                if (s.photoUrl) {
+                    var img = document.createElement('img');
+                    img.src = s.photoUrl;
+                    img.style.cssText = 'width:32px;height:32px;border-radius:50%;object-fit:cover;margin-right:8px;vertical-align:middle;';
+                    img.onerror = function() { this.style.display = 'none'; };
+                    info.insertBefore(img, strong);
+                }
                 const small = document.createElement('small');
                 small.textContent = s.parentPhone ? 'Parent: ' + s.parentPhone : '⚠️ No parent assigned';
                 small.style.color = s.parentPhone ? '#888' : '#e65100';

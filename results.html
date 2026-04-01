@@ -178,6 +178,7 @@
 <!-- Letterhead -->
 <div class="letterhead">
     <img src="mtakuja.png" alt="School Logo">
+    <div id="student-photo-slot"></div>
     <h2>Mtakuja Beach Secondary School</h2>
     <p class="school-address">
         Kunduchi Beach, Kinondoni Municipality, Dar es Salaam, Tanzania<br>
@@ -216,6 +217,7 @@
 <script src="firebase-app-compat.js"></script>
 <script src="firebase-firestore-compat.js"></script>
 <script src="firebase.js"></script>
+<script src="translations.js"></script>
 <script src="script.js?v=2"></script>
 <script>
     const EXAM_TYPES = ['Mid Term 1', 'Terminal 1', 'Mid Term 2', 'Terminal 2'];
@@ -256,6 +258,17 @@
         document.getElementById('slip-year').textContent = 'Year: ' + currentYear;
         document.getElementById('slip-date-issued').textContent =
             'Issued: ' + new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+
+        // Load student photo
+        db.collection('students').where('name', '==', student).where('form', '==', cls).get()
+            .then(function(snap) {
+                if (!snap.empty && snap.docs[0].data().photoUrl) {
+                    var photoDiv = document.getElementById('student-photo-slot');
+                    if (photoDiv) {
+                        photoDiv.innerHTML = '<img src="' + snap.docs[0].data().photoUrl + '" style="width:60px;height:60px;border-radius:50%;object-fit:cover;border:2px solid #43a047;margin:4px auto;display:block;" onerror="this.style.display=\'none\'">';
+                    }
+                }
+            }).catch(function(){});
 
         // Get subjects for this class/stream
         let subjects = [];

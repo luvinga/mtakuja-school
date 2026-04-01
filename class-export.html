@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Export Class Results</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4CAF50">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: flex-end;
+            margin-bottom: 18px;
+        }
+        .controls label {
+            font-size: 13px;
+            font-weight: bold;
+            color: #1b5e20;
+            margin-bottom: 4px;
+            display: block;
+        }
+        .controls select {
+            padding: 8px 10px;
+            border-radius: 10px;
+            border: 2px solid #c8e6c9;
+            font-size: 14px;
+            background: #f9fbe7;
+        }
+        .controls button {
+            width: auto;
+            padding: 10px 20px;
+            font-size: 14px;
+            margin: 0;
+        }
+        .export-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+            margin-top: 16px;
+            overflow-x: auto;
+            display: block;
+        }
+        .export-table th {
+            background: linear-gradient(135deg, #1b5e20, #2e7d32);
+            color: #fff;
+            padding: 6px 4px;
+            text-align: center;
+            white-space: nowrap;
+        }
+        .export-table th:first-child { text-align: left; padding-left: 8px; }
+        .export-table td {
+            padding: 5px 4px;
+            border-bottom: 1px solid #e0e0e0;
+            text-align: center;
+            color: #333;
+        }
+        .export-table td:first-child { text-align: left; padding-left: 8px; }
+        .export-table tr:nth-child(even) { background: #f1f8e9; }
+        .export-table tr:hover { background: #e8f5e9; }
+        .grade-a { color: #1b5e20; font-weight: bold; }
+        .grade-b { color: #2e7d32; }
+        .grade-c { color: #f57c00; }
+        .grade-d { color: #e65100; }
+        .grade-f { color: #c62828; font-weight: bold; }
+        .div-1 { color: #1b5e20; font-weight: bold; }
+        .div-2 { color: #2e7d32; }
+        .div-3 { color: #f57c00; }
+        .div-4 { color: #e65100; }
+        .div-0 { color: #c62828; }
+        .print-section {
+            margin-top: 14px;
+        }
+        .letterhead-print {
+            display: none;
+        }
+        #results-area { overflow-x: auto; }
+        @media print {
+            .controls, .back-btn, .print-btn { display: none !important; }
+            body { background: white; display: block; padding: 0; }
+            .app-container {
+                box-shadow: none;
+                border-radius: 0;
+                border-top: none;
+                max-width: 100%;
+                width: 100%;
+                padding: 10px;
+                min-height: auto;
+            }
+            .letterhead-print { display: block; text-align: center; margin-bottom: 10px; }
+            .letterhead-print h2 { color: #1b5e20; font-size: 16px; margin: 0; }
+            .letterhead-print p { font-size: 11px; color: #555; margin: 2px 0; }
+            .export-table { display: table; font-size: 9px; }
+            #results-area { overflow-x: visible; }
+        }
+    </style>
+</head>
+<body>
+<div class="app-container">
+
+<button class="back-btn" onclick="goTo('admin-dashboard.html')">← Back</button>
+<h2>📤 Export Class Results</h2>
+
+<div class="controls" id="no-print">
+    <div>
+        <label>Class</label>
+        <select id="cls-select" onchange="onClassChange()">
+            <option value="">Select class</option>
+            <option value="Form 1">Form 1</option>
+            <option value="Form 2">Form 2</option>
+            <option value="Form 3">Form 3</option>
+            <option value="Form 4">Form 4</option>
+        </select>
+    </div>
+    <div id="stream-ctrl" style="display:none;">
+        <label>Stream</label>
+        <select id="stream-select">
+            <option value="">Select stream</option>
+            <option value="Science">Science</option>
+            <option value="Business">Business</option>
+            <option value="Arts">Arts</option>
+        </select>
+    </div>
+    <button onclick="loadResults()">Load Results</button>
+</div>
+
+<!-- Letterhead shown when printing -->
+<div class="letterhead-print">
+    <h2>Mtakuja Beach Secondary School</h2>
+    <p>Kunduchi Beach, Kinondoni Municipality, Dar es Salaam, Tanzania</p>
+    <p id="print-class-label"></p>
+    <p>Academic Year: <span id="print-year"></span></p>
+    <hr>
+</div>
+
+<div id="results-area"><p style="color:#888;text-align:center;">Select a class and click Load Results.</p></div>
+
+<div class="print-section" id="print-btn-wrap" style="display:none;">
+    <button class="print-btn" onclick="window.print()">🖨️ Print Results</button>
+</div>
+
+</div>
+<script src="firebase-app-compat.js"></script>
+<script src="firebase-firestore-compat.js"></script>
+<script src="firebase.js"></script>
+<script src="translations.js"></script>
+<script src="script.js?v=2"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var role = checkAuth();
+        if (role !== 'admin') { goTo('teacher-dashboard.html'); return; }
+        document.getElementById('print-year').textContent = new Date().getFullYear();
+    });
+
+    function onClassChange() {
+        var cls = document.getElementById('cls-select').value;
+        var streamCtrl = document.getElementById('stream-ctrl');
+        streamCtrl.style.display = (cls === 'Form 3' || cls === 'Form 4') ? 'block' : 'none';
+        if (cls !== 'Form 3' && cls !== 'Form 4') {
+            document.getElementById('stream-select').value = '';
+        }
+    }
+
+    function loadResults() {
+        var cls = document.getElementById('cls-select').value;
+        var stream = document.getElementById('stream-select').value || null;
+
+        if (!cls) { alert('Please select a class.'); return; }
+        if ((cls === 'Form 3' || cls === 'Form 4') && !stream) {
+            alert('Please select a stream for Form 3/4.');
+            return;
+        }
+
+        var container = document.getElementById('results-area');
+        container.innerHTML = '<p style="color:#888;text-align:center;">Loading...</p>';
+        document.getElementById('print-btn-wrap').style.display = 'none';
+
+        var label = stream ? cls + ' — ' + stream : cls;
+        document.getElementById('print-class-label').textContent = 'Class: ' + label;
+
+        var subjects = [];
+        if (stream) {
+            subjects = streamSubjects[stream] || [];
+        } else {
+            subjects = classSubjects[cls] || [];
+        }
+
+        // Query students and grades in parallel
+        var studentsQuery = db.collection('students').where('form', '==', cls);
+        if (stream) {
+            studentsQuery = studentsQuery.where('stream', '==', stream);
+        } else {
+            studentsQuery = studentsQuery.where('stream', '==', null);
+        }
+
+        Promise.all([
+            studentsQuery.get(),
+            db.collection('grades').where('class', '==', cls).where('stream', '==', stream).get()
+        ]).then(function(results) {
+            var studentSnap = results[0];
+            var gradeSnap   = results[1];
+
+            // Build student list sorted by name
+            var students = [];
+            studentSnap.forEach(function(doc) {
+                students.push(doc.data().name);
+            });
+            students.sort();
+
+            if (students.length === 0) {
+                container.innerHTML = '<p style="color:#888;text-align:center;">No students found for this class.</p>';
+                return;
+            }
+
+            // Build grade records: studentGrades[student][subject][examType] = grade
+            var studentGrades = {};
+            students.forEach(function(name) {
+                studentGrades[name] = {};
+                subjects.forEach(function(sub) {
+                    studentGrades[name][sub] = {};
+                });
+            });
+
+            var gradeDocs = gradeSnap.docs.slice().sort(function(a, b) {
+                var da = a.data().date || '';
+                var db2 = b.data().date || '';
+                return da < db2 ? -1 : da > db2 ? 1 : 0;
+            });
+
+            gradeDocs.forEach(function(doc) {
+                var rec = doc.data();
+                if (!rec.subject || !rec.grades || !rec.examType) return;
+                students.forEach(function(name) {
+                    if (rec.grades[name] !== undefined) {
+                        if (!studentGrades[name][rec.subject]) studentGrades[name][rec.subject] = {};
+                        studentGrades[name][rec.subject][rec.examType] = rec.grades[name];
+                    }
+                });
+            });
+
+            // Build the table
+            var html = '<table class="export-table"><thead><tr>';
+            html += '<th>Student</th>';
+            subjects.forEach(function(sub) {
+                html += '<th>' + sub + '</th>';
+            });
+            html += '<th>Points</th><th>Division</th></tr></thead><tbody>';
+
+            students.forEach(function(name) {
+                html += '<tr><td>' + name + '</td>';
+                var subjectPoints = [];
+                subjects.forEach(function(sub) {
+                    var examGrades = studentGrades[name][sub] || {};
+                    var pointsList = [];
+                    ['Mid Term 1', 'Terminal 1', 'Mid Term 2', 'Terminal 2'].forEach(function(et) {
+                        var g = examGrades[et];
+                        if (g) pointsList.push(gradeToPoints(g));
+                    });
+                    if (pointsList.length > 0) {
+                        var avg = pointsList.reduce(function(s, p) { return s + p; }, 0) / pointsList.length;
+                        var finalGrade = pointsToGrade(avg);
+                        var pts = gradeToPoints(finalGrade);
+                        subjectPoints.push(pts);
+                        var cls2 = 'grade-' + finalGrade.toLowerCase();
+                        html += '<td class="' + cls2 + '">' + finalGrade + '</td>';
+                    } else {
+                        html += '<td style="color:#bbb;">—</td>';
+                    }
+                });
+
+                if (subjectPoints.length > 0) {
+                    var division = calculateDivision(subjectPoints);
+                    var best7 = subjectPoints.slice().sort(function(a, b) { return a - b; }).slice(0, 7);
+                    var totalPts = best7.reduce(function(s, p) { return s + p; }, 0);
+                    var divClass = 'div-' + (division.replace('Division ', '').replace(' ', '').toLowerCase());
+                    html += '<td>' + totalPts + '</td><td class="' + divClass + '">' + division + '</td>';
+                } else {
+                    html += '<td style="color:#bbb;">—</td><td style="color:#bbb;">—</td>';
+                }
+                html += '</tr>';
+            });
+
+            html += '</tbody></table>';
+            container.innerHTML = html;
+            document.getElementById('print-btn-wrap').style.display = 'block';
+        }).catch(function(err) {
+            container.innerHTML = '<p style="color:red;">Error loading results: ' + err.message + '</p>';
+        });
+    }
+</script>
+<script>if("serviceWorker" in navigator){navigator.serviceWorker.register("service-worker.js");}</script>
+</body>
+</html>

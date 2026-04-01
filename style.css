@@ -330,3 +330,86 @@ td { color: #333; }
     .back-btn, .print-btn { display: none !important; }
     h1, h2 { color: #1b5e20 !important; }
 }
+
+/* ── Dark Mode ──────────────────────────────────────────── */
+body.dark-mode {
+    background: #121212;
+}
+body.dark-mode .app-container {
+    background: #1e1e1e;
+    border-top-color: #66bb6a;
+    box-shadow: 0 8px 36px rgba(0,0,0,0.7);
+}
+body.dark-mode h1,
+body.dark-mode h2 {
+    color: #a5d6a7;
+    background: none;
+    -webkit-text-fill-color: #a5d6a7;
+}
+body.dark-mode h3 {
+    color: #81c784;
+}
+body.dark-mode p,
+body.dark-mode label,
+body.dark-mode td {
+    color: #ccc;
+}
+body.dark-mode button {
+    background: linear-gradient(135deg, #2e7d32, #1b5e20);
+}
+body.dark-mode .back-btn {
+    background: #333;
+    color: #a5d6a7;
+    border-color: #66bb6a;
+}
+body.dark-mode input,
+body.dark-mode select,
+body.dark-mode textarea {
+    background: #2a2a2a;
+    color: #eee;
+    border-color: #444;
+}
+body.dark-mode .student-row,
+body.dark-mode li {
+    background: #2a2a2a;
+    color: #eee;
+}
+body.dark-mode th {
+    background: linear-gradient(135deg, #1b5e20, #2e7d32);
+}
+body.dark-mode tr:nth-child(even) {
+    background: #252525;
+}
+body.dark-mode .section-card {
+    background: #252525;
+    border-color: #444;
+}
+body.dark-mode .summary-box {
+    background: #252525;
+    border-color: #444;
+}
+
+/* ── Dark Mode Toggle Button ────────────────────────────── */
+.dark-mode-toggle {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: #2e7d32;
+    color: white;
+    font-size: 20px;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.3);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+    margin: 0;
+    padding: 0;
+    width: 44px !important;
+}
+.dark-mode-toggle:hover { background: #1b5e20; }

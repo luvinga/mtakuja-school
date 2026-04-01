@@ -21,20 +21,34 @@
 <button onclick="goTo('results.html')">View Result Slip</button>
 <button onclick="goTo('notices.html')">View Notices</button>
 <button onclick="goTo('timetable.html')">📅 View Timetable</button>
+<button onclick="goTo('notifications.html')" id="notif-btn">🔔 Notifications</button>
 
 <button onclick="logout()" style="background: #f44336;">Logout</button>
 
 </div>
+<script src="firebase-app-compat.js"></script>
+<script src="firebase-firestore-compat.js"></script>
+<script src="firebase.js"></script>
+<script src="translations.js"></script>
 <script src="script.js?v=2"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         if (checkAuth() !== 'parent') goTo('index.html');
-        const student = localStorage.getItem('student');
-        const cls     = localStorage.getItem('studentClass');
-        const stream  = localStorage.getItem('studentStream');
-        const label   = stream ? cls + ' — ' + stream : cls;
+        var student = localStorage.getItem('student');
+        var cls     = localStorage.getItem('studentClass');
+        var stream  = localStorage.getItem('studentStream');
+        var label   = stream ? cls + ' — ' + stream : cls;
         document.getElementById('welcome-msg').textContent =
             '👋 Welcome, Parent of ' + student + ' (' + label + ')';
+
+        if (student) {
+            db.collection('notifications').where('studentName', '==', student).where('read', '==', false).get()
+                .then(function(snap) {
+                    if (snap.size > 0) {
+                        document.getElementById('notif-btn').textContent = '🔔 Notifications (' + snap.size + ')';
+                    }
+                }).catch(function(){});
+        }
     });
 </script>
 <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("service-worker.js");}</script>

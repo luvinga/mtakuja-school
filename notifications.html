@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Notifications</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4CAF50">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        .notif-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 14px 16px;
+            margin: 8px 0;
+            border: 1px solid #e0e0e0;
+            border-left: 5px solid #ccc;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            transition: box-shadow 0.2s;
+        }
+        .notif-card.unread {
+            border-left-color: #43a047;
+            background: #f1f8e9;
+        }
+        .notif-card .notif-icon {
+            font-size: 24px;
+            line-height: 1;
+            flex-shrink: 0;
+        }
+        .notif-card .notif-body {
+            flex: 1;
+        }
+        .notif-card .notif-msg {
+            font-size: 14px;
+            color: #333;
+            margin: 0 0 4px;
+            font-weight: 500;
+        }
+        .notif-card .notif-date {
+            font-size: 12px;
+            color: #888;
+        }
+        .notif-card.read .notif-msg {
+            color: #888;
+            font-weight: normal;
+        }
+        .mark-read-btn {
+            width: auto;
+            padding: 8px 18px;
+            font-size: 14px;
+            margin: 10px 0;
+        }
+        .no-notif {
+            text-align: center;
+            color: #888;
+            font-style: italic;
+            padding: 30px 0;
+        }
+    </style>
+</head>
+<body>
+<div class="app-container">
+
+<button class="back-btn" onclick="goBack()">← Back</button>
+<h2 id="notif-heading">🔔 Notifications</h2>
+
+<button class="mark-read-btn" onclick="markAllRead()" id="mark-read-btn" style="display:none;">Mark All Read</button>
+
+<div id="notif-list"><p style="text-align:center;color:#888;">Loading...</p></div>
+
+</div>
+<script src="firebase-app-compat.js"></script>
+<script src="firebase-firestore-compat.js"></script>
+<script src="firebase.js"></script>
+<script src="translations.js"></script>
+<script src="script.js?v=2"></script>
+<script>
+    var allNotifDocs = [];
+
+    document.addEventListener('DOMContentLoaded', function() {
+        if (checkAuth() !== 'parent') { goTo('index.html'); return; }
+
+        var studentName = localStorage.getItem('student');
+        if (!studentName) {
+            document.getElementById('notif-list').innerHTML = '<p class="no-notif">No student found. Please log in again.</p>';
+            return;
+        }
+
+        loadNotifications(studentName);
+    });
+
+    function loadNotifications(studentName) {
+        db.collection('notifications').where('studentName', '==', studentName).get()
+            .then(function(snap) {
+                allNotifDocs = [];
+                snap.forEach(function(doc) {
+                    var d = doc.data();
+                    d._id = doc.id;
+                    allNotifDocs.push(d);
+                });
+
+                // Sort by timestamp descending
+                allNotifDocs.sort(function(a, b) {
+                    var ta = a.timestamp || a.date || '';
+                    var tb = b.timestamp || b.date || '';
+                    return tb > ta ? 1 : tb < ta ? -1 : 0;
+                });
+
+                var unreadCount = allNotifDocs.filter(function(n) { return !n.read; }).length;
+                document.getElementById('notif-heading').textContent =
+                    '🔔 Notifications' + (unreadCount > 0 ? ' (' + unreadCount + ' unread)' : '');
+
+                if (unreadCount > 0) {
+                    document.getElementById('mark-read-btn').style.display = 'inline-block';
+                }
+
+                renderNotifications();
+            })
+            .catch(function(err) {
+                document.getElementById('notif-list').innerHTML = '<p style="color:red;">Error loading notifications: ' + err.message + '</p>';
+            });
+    }
+
+    function renderNotifications() {
+        var container = document.getElementById('notif-list');
+        container.innerHTML = '';
+
+        if (allNotifDocs.length === 0) {
+            container.innerHTML = '<p class="no-notif">No notifications yet.</p>';
+            return;
+        }
+
+        allNotifDocs.forEach(function(n) {
+            var card = document.createElement('div');
+            card.className = 'notif-card ' + (n.read ? 'read' : 'unread');
+
+            var icon = document.createElement('div');
+            icon.className = 'notif-icon';
+            icon.textContent = n.type === 'grades' ? '📝' : '📋';
+
+            var body = document.createElement('div');
+            body.className = 'notif-body';
+
+            var msg = document.createElement('p');
+            msg.className = 'notif-msg';
+            msg.textContent = n.message || '';
+
+            var date = document.createElement('div');
+            date.className = 'notif-date';
+            date.textContent = n.date || '';
+
+            body.appendChild(msg);
+            body.appendChild(date);
+            card.appendChild(icon);
+            card.appendChild(body);
+            container.appendChild(card);
+        });
+    }
+
+    function markAllRead() {
+        var unread = allNotifDocs.filter(function(n) { return !n.read; });
+        if (unread.length === 0) return;
+
+        var promises = unread.map(function(n) {
+            return db.collection('notifications').doc(n._id).update({ read: true });
+        });
+
+        Promise.all(promises).then(function() {
+            allNotifDocs.forEach(function(n) { n.read = true; });
+            document.getElementById('notif-heading').textContent = '🔔 Notifications';
+            document.getElementById('mark-read-btn').style.display = 'none';
+            renderNotifications();
+        }).catch(function(err) {
+            alert('Error marking as read: ' + err.message);
+        });
+    }
+</script>
+<script>if("serviceWorker" in navigator){navigator.serviceWorker.register("service-worker.js");}</script>
+</body>
+</html>
