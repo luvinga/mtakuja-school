@@ -8,6 +8,40 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        .exam-group {
+            margin-bottom: 24px;
+        }
+        .exam-group-title {
+            background: #4CAF50;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        .record-card {
+            background: #f9f9f9;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-bottom: 8px;
+        }
+        .record-card h4 {
+            margin: 0 0 6px 0;
+            font-size: 14px;
+            color: #333;
+        }
+        .grade-entry {
+            font-size: 13px;
+            padding: 2px 0;
+            color: #555;
+        }
+        .grade-entry strong {
+            color: #222;
+        }
+    </style>
 </head>
 <body>
 <div class="app-container">
@@ -24,6 +58,8 @@
 <script src="firebase.js?v=2"></script>
 <script src="script.js?v=2"></script>
 <script>
+    const EXAM_ORDER = ['Mid Term 1', 'Terminal 1', 'Mid Term 2', 'Terminal 2'];
+
     document.addEventListener('DOMContentLoaded', function() {
         const cls    = getSelectedClass();
         const stream = getSelectedStream() || null;
@@ -44,18 +80,69 @@
                     list.innerHTML = '<p>No records found.</p>';
                     return;
                 }
-                list.innerHTML = '';
+
+                // Group records by examType
+                const grouped = {};
+                EXAM_ORDER.forEach(function(et) { grouped[et] = []; });
                 snapshot.forEach(function(doc) {
                     const record = doc.data();
-                    const div = document.createElement('div');
-                    div.style.marginBottom = '16px';
-                    let html = '<h3>' + record.date + (record.subject ? ' — ' + record.subject : '') + '</h3>';
-                    const grds = record.grades || {};
-                    for (const student in grds) {
-                        html += '<p>' + student + ': <strong>' + grds[student] + '</strong></p>';
-                    }
-                    div.innerHTML = html;
-                    list.appendChild(div);
+                    const et = record.examType || 'Other';
+                    if (!grouped[et]) grouped[et] = [];
+                    grouped[et].push(record);
+                });
+
+                list.innerHTML = '';
+
+                // Render in exam order
+                const examTypes = EXAM_ORDER.filter(function(et) { return grouped[et] && grouped[et].length > 0; });
+                // Also handle any 'Other' records
+                if (grouped['Other'] && grouped['Other'].length > 0) examTypes.push('Other');
+
+                if (examTypes.length === 0) {
+                    list.innerHTML = '<p>No records found.</p>';
+                    return;
+                }
+
+                examTypes.forEach(function(examType) {
+                    const records = grouped[examType];
+                    if (!records || records.length === 0) return;
+
+                    const groupDiv = document.createElement('div');
+                    groupDiv.className = 'exam-group';
+
+                    const groupTitle = document.createElement('div');
+                    groupTitle.className = 'exam-group-title';
+                    groupTitle.textContent = examType;
+                    groupDiv.appendChild(groupTitle);
+
+                    records.forEach(function(record) {
+                        const card = document.createElement('div');
+                        card.className = 'record-card';
+
+                        const heading = document.createElement('h4');
+                        heading.textContent = (record.subject || 'Unknown Subject') + ' — ' + record.date;
+                        card.appendChild(heading);
+
+                        const grds = record.grades || {};
+                        const studentNames = Object.keys(grds).sort();
+                        studentNames.forEach(function(student) {
+                            const p = document.createElement('p');
+                            p.className = 'grade-entry';
+                            p.innerHTML = student + ': <strong>' + grds[student] + '</strong>';
+                            card.appendChild(p);
+                        });
+
+                        if (studentNames.length === 0) {
+                            const p = document.createElement('p');
+                            p.className = 'grade-entry';
+                            p.textContent = 'No grades entered.';
+                            card.appendChild(p);
+                        }
+
+                        groupDiv.appendChild(card);
+                    });
+
+                    list.appendChild(groupDiv);
                 });
             })
             .catch(function(err) {

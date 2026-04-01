@@ -8,6 +8,30 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        .grade-select {
+            padding: 6px 8px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            font-size: 14px;
+            background: #fff;
+            cursor: pointer;
+        }
+        .selector-row {
+            margin-bottom: 10px;
+        }
+        .selector-row label {
+            display: block;
+            margin-bottom: 4px;
+        }
+        .selector-row select {
+            width: 100%;
+            padding: 8px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            font-size: 14px;
+        }
+    </style>
 </head>
 <body>
 <div class="app-container">
@@ -16,8 +40,20 @@
 
 <h2 id="grades-title">Enter Grades</h2>
 
-<label for="subject-select">Select Subject:</label>
-<select id="subject-select" onchange="renderStudentList()"></select>
+<div class="selector-row">
+    <label for="exam-type-select">Select Exam:</label>
+    <select id="exam-type-select" onchange="updateTitle()">
+        <option value="Mid Term 1">Mid Term 1</option>
+        <option value="Terminal 1">Terminal 1</option>
+        <option value="Mid Term 2">Mid Term 2</option>
+        <option value="Terminal 2">Terminal 2</option>
+    </select>
+</div>
+
+<div class="selector-row">
+    <label for="subject-select" id="subject-label">Select Subject:</label>
+    <select id="subject-select" onchange="renderStudentList()"></select>
+</div>
 
 <p id="loading-msg" style="text-align:center; color:#666;">Loading students...</p>
 <div id="grades-list"></div>
@@ -32,20 +68,26 @@
 <script src="script.js?v=2"></script>
 <script>
     var loadedStudents = [];
+    var classLabel = '';
+
+    function updateTitle() {
+        const examType = document.getElementById('exam-type-select').value;
+        document.getElementById('grades-title').textContent = 'Grades — ' + classLabel + ' (' + examType + ')';
+    }
 
     document.addEventListener('DOMContentLoaded', function() {
         const cls = getSelectedClass();
         if (!cls) { goTo('teacher-dashboard.html'); return; }
         const stream = getSelectedStream();
-        const label = stream ? cls + ' (' + stream + ')' : cls;
-        document.getElementById('grades-title').textContent = 'Grades — ' + label;
+        classLabel = stream ? cls + ' ' + stream : cls;
+        updateTitle();
 
         // Populate subjects — admin sees all, subject teacher sees only their subject
         let teacher = null;
         try { teacher = JSON.parse(localStorage.getItem('teacherData')); } catch(e) {}
 
         const select = document.getElementById('subject-select');
-        const subjectLabel = document.querySelector('label[for="subject-select"]');
+        const subjectLabel = document.getElementById('subject-label');
 
         if (teacher && teacher.role !== 'admin' && teacher.subject) {
             // Subject teacher — lock to their subject, no dropdown needed
@@ -99,13 +141,17 @@
             nameSpan.className = 'student-name';
             nameSpan.textContent = student.name;
 
-            const input = document.createElement('input');
-            input.type = 'text';
-            input.placeholder = 'Grade';
-            input.style = 'width:70px; padding:6px; border-radius:8px; border:1px solid #ccc;';
+            const gradeSelect = document.createElement('select');
+            gradeSelect.className = 'grade-select';
+            ['', 'A', 'B', 'C', 'D', 'F'].forEach(function(g) {
+                const opt = document.createElement('option');
+                opt.value = g;
+                opt.textContent = g || '— Grade —';
+                gradeSelect.appendChild(opt);
+            });
 
             div.appendChild(nameSpan);
-            div.appendChild(input);
+            div.appendChild(gradeSelect);
             list.appendChild(div);
         });
     }

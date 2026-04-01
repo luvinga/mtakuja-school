@@ -9,11 +9,64 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-        .grades-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        .grades-table th { background: #4CAF50; color: white; padding: 8px; text-align: left; }
-        .grades-table td { padding: 8px; border-bottom: 1px solid #ddd; font-size: 14px; }
+        .grades-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 12px;
+        }
+        .grades-table th {
+            background: #4CAF50;
+            color: white;
+            padding: 6px 4px;
+            text-align: center;
+        }
+        .grades-table th:first-child {
+            text-align: left;
+            padding-left: 8px;
+        }
+        .grades-table td {
+            padding: 6px 4px;
+            border-bottom: 1px solid #ddd;
+            text-align: center;
+        }
+        .grades-table td:first-child {
+            text-align: left;
+            padding-left: 8px;
+            font-size: 12px;
+        }
         .grades-table tr:nth-child(even) { background: #f9f9f9; }
         .no-grade { color: #aaa; font-style: italic; }
+        .final-grade { font-weight: bold; color: #333; }
+        .summary-box {
+            margin-top: 14px;
+            background: #f0f7f0;
+            border: 1px solid #4CAF50;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 14px;
+        }
+        .summary-box p {
+            margin: 4px 0;
+        }
+        .division-label {
+            font-size: 16px;
+            font-weight: bold;
+            color: #2e7d32;
+        }
+        .print-btn {
+            margin-top: 12px;
+        }
+        @media print {
+            .back-btn, .print-btn { display: none !important; }
+            body { background: white; }
+            .app-container {
+                box-shadow: none;
+                border-radius: 0;
+                height: auto;
+                width: 100%;
+            }
+        }
     </style>
 </head>
 <body>
@@ -21,9 +74,11 @@
 
 <button class="back-btn" onclick="goBack()">← Back</button>
 
-<h2 id="grades-title">📊 Grades Report</h2>
+<h2 id="grades-title">Grades Report</h2>
 
 <div id="grades-display"><p>Loading...</p></div>
+
+<button class="print-btn" onclick="window.print()" style="display:none;" id="print-btn">Print Report</button>
 
 </div>
 <script src="firebase-app-compat.js"></script>
@@ -31,6 +86,9 @@
 <script src="firebase.js?v=2"></script>
 <script src="script.js?v=2"></script>
 <script>
+    const EXAM_TYPES = ['Mid Term 1', 'Terminal 1', 'Mid Term 2', 'Terminal 2'];
+    const EXAM_SHORT = { 'Mid Term 1': 'Mid T1', 'Terminal 1': 'Term 1', 'Mid Term 2': 'Mid T2', 'Terminal 2': 'Term 2' };
+
     document.addEventListener('DOMContentLoaded', function() {
         if (checkAuth() !== 'parent') { goTo('index.html'); return; }
 
@@ -40,7 +98,7 @@
         const display = document.getElementById('grades-display');
 
         const label = stream ? cls + ' — ' + stream : cls;
-        document.getElementById('grades-title').textContent = '📊 Grades — ' + student;
+        document.getElementById('grades-title').textContent = 'Grades — ' + student;
 
         // Get subjects for this student's class/stream
         let subjects = [];
@@ -61,30 +119,78 @@
             .orderBy('date', 'asc')
             .get()
             .then(function(snapshot) {
-                // For each subject, find the latest grade for this student
-                const latestGrades = {};
-                snapshot.forEach(function(doc) {
-                    const record = doc.data();
-                    if (record.subject && record.grades && record.grades[student] !== undefined) {
-                        // Overwrite keeps the latest (records are ordered asc so last wins)
-                        latestGrades[record.subject] = { grade: record.grades[student], date: record.date };
-                    }
+                // Build: subjectGrades[subject][examType] = latest grade for this student
+                const subjectGrades = {};
+                subjects.forEach(function(s) {
+                    subjectGrades[s] = {};
                 });
 
-                let html = '<p style="color:#666; font-size:13px;">Class: ' + label + '</p>';
-                html += '<table class="grades-table"><thead><tr><th>Subject</th><th>Grade</th><th>Date</th></tr></thead><tbody>';
+                snapshot.forEach(function(doc) {
+                    const record = doc.data();
+                    if (!record.subject || !record.grades || record.grades[student] === undefined) return;
+                    const examType = record.examType || '';
+                    if (!examType) return;
+                    const grade = record.grades[student];
+                    if (!subjectGrades[record.subject]) subjectGrades[record.subject] = {};
+                    // Last record wins (ordered asc)
+                    subjectGrades[record.subject][examType] = grade;
+                });
+
+                // Build table
+                let html = '<p style="color:#666; font-size:12px;">Class: ' + label + '</p>';
+                html += '<table class="grades-table"><thead><tr>';
+                html += '<th>Subject</th>';
+                EXAM_TYPES.forEach(function(et) {
+                    html += '<th>' + EXAM_SHORT[et] + '</th>';
+                });
+                html += '<th>Final</th><th>Pts</th></tr></thead><tbody>';
+
+                const finalPoints = [];
 
                 subjects.forEach(function(subject) {
-                    const entry = latestGrades[subject];
-                    if (entry && entry.grade) {
-                        html += '<tr><td>' + subject + '</td><td><strong>' + entry.grade + '</strong></td><td>' + entry.date + '</td></tr>';
-                    } else {
-                        html += '<tr><td>' + subject + '</td><td class="no-grade">Not yet entered</td><td>—</td></tr>';
+                    const examGrades = subjectGrades[subject] || {};
+                    const pointsList = [];
+                    EXAM_TYPES.forEach(function(et) {
+                        const g = examGrades[et];
+                        if (g) pointsList.push(gradeToPoints(g));
+                    });
+
+                    let finalGrade = '';
+                    let finalPts = '';
+                    if (pointsList.length > 0) {
+                        const avg = pointsList.reduce(function(s, p) { return s + p; }, 0) / pointsList.length;
+                        finalGrade = pointsToGrade(avg);
+                        finalPts = gradeToPoints(finalGrade);
+                        finalPoints.push(finalPts);
                     }
+
+                    html += '<tr>';
+                    html += '<td>' + subject + '</td>';
+                    EXAM_TYPES.forEach(function(et) {
+                        const g = examGrades[et];
+                        html += '<td>' + (g ? '<strong>' + g + '</strong>' : '<span class="no-grade">—</span>') + '</td>';
+                    });
+                    html += '<td class="final-grade">' + (finalGrade || '<span class="no-grade">—</span>') + '</td>';
+                    html += '<td>' + (finalPts !== '' ? finalPts : '<span class="no-grade">—</span>') + '</td>';
+                    html += '</tr>';
                 });
 
                 html += '</tbody></table>';
+
+                // Summary
+                if (finalPoints.length > 0) {
+                    const division = calculateDivision(finalPoints);
+                    const best7pts = finalPoints.slice().sort(function(a, b) { return a - b; }).slice(0, 7);
+                    const totalPts = best7pts.reduce(function(s, p) { return s + p; }, 0);
+                    html += '<div class="summary-box">';
+                    html += '<p>Subjects Sat: <strong>' + finalPoints.length + '</strong></p>';
+                    html += '<p>Total Points (Best 7): <strong>' + totalPts + '</strong></p>';
+                    html += '<p class="division-label">' + division + '</p>';
+                    html += '</div>';
+                }
+
                 display.innerHTML = html;
+                document.getElementById('print-btn').style.display = 'block';
             })
             .catch(function(err) {
                 display.innerHTML = '<p style="color:red;">Error loading grades: ' + err.message + '</p>';

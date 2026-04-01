@@ -8,6 +8,38 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        .student-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #f0f0f0;
+            padding: 8px 10px;
+            margin: 6px 0;
+            border-radius: 8px;
+        }
+        .student-item-name {
+            flex: 1;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .results-btn {
+            display: inline-block;
+            width: auto;
+            padding: 5px 10px;
+            font-size: 12px;
+            margin: 0;
+            background: #1976D2;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .results-btn:hover {
+            background: #1565C0;
+        }
+    </style>
 </head>
 <body>
 <div class="app-container">
@@ -17,7 +49,7 @@
 <h2 id="students-title">Students List</h2>
 
 <p id="loading-msg" style="text-align:center; color:#666;">Loading students...</p>
-<ul id="students-list"></ul>
+<div id="students-list"></div>
 
 </div>
 <script src="firebase-app-compat.js"></script>
@@ -45,11 +77,25 @@
 
                 students.sort(function(a, b) { return a.name.localeCompare(b.name); });
                 students.forEach(function(student) {
-                    const li = document.createElement('li');
-                    li.textContent = student.name;
-                    li.style.cursor = 'pointer';
-                    li.onclick = function() { viewProfile(student.name); };
-                    list.appendChild(li);
+                    const div = document.createElement('div');
+                    div.className = 'student-item';
+
+                    const nameSpan = document.createElement('span');
+                    nameSpan.className = 'student-item-name';
+                    nameSpan.textContent = student.name;
+                    nameSpan.onclick = function() { viewProfile(student.name); };
+
+                    const resultsBtn = document.createElement('button');
+                    resultsBtn.className = 'results-btn';
+                    resultsBtn.textContent = 'Results';
+                    resultsBtn.onclick = function() {
+                        localStorage.setItem('selectedStudent', student.name);
+                        goTo('results.html');
+                    };
+
+                    div.appendChild(nameSpan);
+                    div.appendChild(resultsBtn);
+                    list.appendChild(div);
                 });
             })
             .catch(function(err) {

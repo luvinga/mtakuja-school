@@ -139,22 +139,55 @@ function saveAttendance() {
         });
 }
 
+// ─── Grade Helpers (Tanzania NECTA) ──────────────────────────────────────────
+
+// Grade letter to points (A=1 best, F=5 worst)
+function gradeToPoints(grade) {
+    const map = { 'A': 1, 'B': 2, 'C': 3, 'D': 4, 'F': 5 };
+    return map[grade.toUpperCase()] || 5;
+}
+
+// Average points back to grade letter
+function pointsToGrade(points) {
+    if (points <= 1.5) return 'A';
+    if (points <= 2.5) return 'B';
+    if (points <= 3.5) return 'C';
+    if (points <= 4.5) return 'D';
+    return 'F';
+}
+
+// Division from array of per-subject points (uses best 7)
+function calculateDivision(pointsArray) {
+    const best7 = pointsArray.slice().sort(function(a, b) { return a - b; }).slice(0, 7);
+    const total = best7.reduce(function(s, p) { return s + p; }, 0);
+    if (total <= 17) return 'Division I';
+    if (total <= 21) return 'Division II';
+    if (total <= 25) return 'Division III';
+    if (total <= 33) return 'Division IV';
+    return 'Division 0';
+}
+
 // ─── Grades ───────────────────────────────────────────────────────────────────
 let grades = {};
 
 function saveGrades() {
-    const inputs = document.querySelectorAll('#grades-list input');
+    const selects = document.querySelectorAll('#grades-list select.grade-select');
     const studentNames = Array.from(document.querySelectorAll('#grades-list .student-name')).map(el => el.textContent);
-    studentNames.forEach((student, index) => { grades[student] = inputs[index].value; });
+    studentNames.forEach((student, index) => {
+        if (selects[index]) grades[student] = selects[index].value;
+    });
     const date = new Date().toISOString().split('T')[0];
     const cls = getSelectedClass();
     const stream = getSelectedStream();
     const subject = document.getElementById('subject-select') ? document.getElementById('subject-select').value : '';
+    const examTypeEl = document.getElementById('exam-type-select');
+    const examType = examTypeEl ? examTypeEl.value : '';
     const record = {
         date,
         class: cls,
         stream: stream || null,
         subject,
+        examType,
         grades: {...grades},
         timestamp: new Date().toISOString()
     };

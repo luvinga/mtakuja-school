@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Student Result Slip</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4CAF50">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        /* ── Result slip styles ── */
+        .result-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+        .result-header img {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #4CAF50;
+            flex-shrink: 0;
+        }
+        .result-header-text h3 {
+            margin: 0;
+            font-size: 15px;
+            color: #2e7d32;
+        }
+        .result-header-text p {
+            margin: 2px 0;
+            font-size: 12px;
+            color: #555;
+        }
+        .slip-divider {
+            border: none;
+            border-top: 2px solid #4CAF50;
+            margin: 8px 0 12px 0;
+        }
+        .result-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+            margin-bottom: 12px;
+        }
+        .result-table th {
+            background: #4CAF50;
+            color: white;
+            padding: 5px 3px;
+            text-align: center;
+        }
+        .result-table th:first-child {
+            text-align: left;
+            padding-left: 6px;
+        }
+        .result-table td {
+            padding: 5px 3px;
+            border-bottom: 1px solid #e0e0e0;
+            text-align: center;
+        }
+        .result-table td:first-child {
+            text-align: left;
+            padding-left: 6px;
+        }
+        .result-table tr:nth-child(even) { background: #f9f9f9; }
+        .no-grade { color: #bbb; }
+        .final-grade-cell { font-weight: bold; }
+        .summary-box {
+            background: #f0f7f0;
+            border: 1px solid #4CAF50;
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-size: 13px;
+            margin-bottom: 12px;
+        }
+        .summary-box p { margin: 4px 0; }
+        .division-label {
+            font-size: 15px;
+            font-weight: bold;
+            color: #2e7d32;
+        }
+        .no-data-msg {
+            color: #888;
+            font-style: italic;
+            text-align: center;
+            padding: 20px 0;
+        }
+        /* ── Print styles ── */
+        @media print {
+            .back-btn,
+            .print-btn,
+            #no-print { display: none !important; }
+            body {
+                background: white;
+                display: block;
+                height: auto;
+            }
+            .app-container {
+                box-shadow: none;
+                border-radius: 0;
+                height: auto;
+                width: 100%;
+                max-width: 100%;
+                padding: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="app-container">
+
+<button class="back-btn" onclick="goBack()">← Back</button>
+
+<!-- School header -->
+<div class="result-header">
+    <img src="mtakuja.png" alt="School Logo">
+    <div class="result-header-text">
+        <h3>Mtakuja Beach Sec School</h3>
+        <p id="slip-student-name">Student: —</p>
+        <p id="slip-class">Class: —</p>
+        <p id="slip-year">Academic Year: —</p>
+    </div>
+</div>
+<hr class="slip-divider">
+
+<div id="result-content"><p style="text-align:center;color:#666;">Loading result...</p></div>
+
+<div id="action-btns">
+    <button class="print-btn" onclick="window.print()" id="print-btn" style="display:none;">Print Result Slip</button>
+</div>
+
+</div>
+<script src="firebase-app-compat.js"></script>
+<script src="firebase-firestore-compat.js"></script>
+<script src="firebase.js"></script>
+<script src="script.js?v=2"></script>
+<script>
+    const EXAM_TYPES = ['Mid Term 1', 'Terminal 1', 'Mid Term 2', 'Terminal 2'];
+    const EXAM_SHORT = {
+        'Mid Term 1': 'Mid T1',
+        'Terminal 1': 'Term 1',
+        'Mid Term 2': 'Mid T2',
+        'Terminal 2': 'Term 2'
+    };
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Determine context: parent view or teacher view
+        const role = localStorage.getItem('role');
+        let student, cls, stream;
+
+        if (role === 'parent') {
+            student = localStorage.getItem('student');
+            cls     = localStorage.getItem('studentClass');
+            stream  = localStorage.getItem('studentStream') || null;
+        } else {
+            // Teacher / admin view — student set via selectedStudent
+            student = localStorage.getItem('selectedStudent');
+            cls     = localStorage.getItem('selectedClass');
+            stream  = localStorage.getItem('selectedStream') || null;
+        }
+
+        if (!student || !cls) {
+            document.getElementById('result-content').innerHTML =
+                '<p style="color:red;text-align:center;">No student selected. Please go back and select a student.</p>';
+            return;
+        }
+
+        const classLabel = stream ? cls + ' — ' + stream : cls;
+        const currentYear = new Date().getFullYear();
+
+        document.getElementById('slip-student-name').textContent = 'Student: ' + student;
+        document.getElementById('slip-class').textContent = 'Class: ' + classLabel;
+        document.getElementById('slip-year').textContent = 'Academic Year: ' + currentYear;
+
+        // Get subjects for this class/stream
+        let subjects = [];
+        if (stream) {
+            subjects = streamSubjects[stream] || [];
+        } else {
+            subjects = classSubjects[cls] || [];
+        }
+
+        if (subjects.length === 0) {
+            document.getElementById('result-content').innerHTML =
+                '<p class="no-data-msg">No subjects found for this class.</p>';
+            return;
+        }
+
+        db.collection('grades')
+            .where('class', '==', cls)
+            .where('stream', '==', stream)
+            .orderBy('date', 'asc')
+            .get()
+            .then(function(snapshot) {
+                // Build: subjectGrades[subject][examType] = latest grade string
+                var subjectGrades = {};
+                subjects.forEach(function(s) { subjectGrades[s] = {}; });
+
+                snapshot.forEach(function(doc) {
+                    var record = doc.data();
+                    if (!record.subject || !record.grades || record.grades[student] === undefined) return;
+                    var examType = record.examType || '';
+                    if (!examType) return;
+                    if (!subjectGrades[record.subject]) subjectGrades[record.subject] = {};
+                    // Last (asc ordered) wins per exam type per subject
+                    subjectGrades[record.subject][examType] = record.grades[student];
+                });
+
+                // Compute final grades
+                var finalPoints = [];
+                var tableRows = [];
+
+                subjects.forEach(function(subject) {
+                    var examGrades = subjectGrades[subject] || {};
+                    var pointsList = [];
+                    EXAM_TYPES.forEach(function(et) {
+                        var g = examGrades[et];
+                        if (g) pointsList.push(gradeToPoints(g));
+                    });
+
+                    var finalGrade = '';
+                    var finalPts = '';
+                    if (pointsList.length > 0) {
+                        var avg = pointsList.reduce(function(s, p) { return s + p; }, 0) / pointsList.length;
+                        finalGrade = pointsToGrade(avg);
+                        finalPts = gradeToPoints(finalGrade);
+                        finalPoints.push(finalPts);
+                    }
+
+                    tableRows.push({
+                        subject: subject,
+                        examGrades: examGrades,
+                        finalGrade: finalGrade,
+                        finalPts: finalPts
+                    });
+                });
+
+                // Build HTML
+                var html = '<table class="result-table"><thead><tr>';
+                html += '<th>Subject</th>';
+                EXAM_TYPES.forEach(function(et) {
+                    html += '<th>' + EXAM_SHORT[et] + '</th>';
+                });
+                html += '<th>Final</th><th>Pts</th></tr></thead><tbody>';
+
+                tableRows.forEach(function(row) {
+                    html += '<tr>';
+                    html += '<td>' + row.subject + '</td>';
+                    EXAM_TYPES.forEach(function(et) {
+                        var g = row.examGrades[et];
+                        html += '<td>' + (g ? '<strong>' + g + '</strong>' : '<span class="no-grade">—</span>') + '</td>';
+                    });
+                    html += '<td class="final-grade-cell">' +
+                        (row.finalGrade || '<span class="no-grade">—</span>') + '</td>';
+                    html += '<td>' +
+                        (row.finalPts !== '' ? row.finalPts : '<span class="no-grade">—</span>') + '</td>';
+                    html += '</tr>';
+                });
+
+                html += '</tbody></table>';
+
+                // Summary section
+                if (finalPoints.length > 0) {
+                    var division = calculateDivision(finalPoints);
+                    var best7 = finalPoints.slice().sort(function(a, b) { return a - b; }).slice(0, 7);
+                    var totalPts = best7.reduce(function(s, p) { return s + p; }, 0);
+                    html += '<div class="summary-box">';
+                    html += '<p>Subjects Sat: <strong>' + finalPoints.length + '</strong></p>';
+                    html += '<p>Total Points (Best 7): <strong>' + totalPts + '</strong></p>';
+                    html += '<p class="division-label">' + division + '</p>';
+                    html += '</div>';
+                } else {
+                    html += '<p class="no-data-msg">No exam results have been entered yet.</p>';
+                }
+
+                document.getElementById('result-content').innerHTML = html;
+                document.getElementById('print-btn').style.display = 'block';
+            })
+            .catch(function(err) {
+                document.getElementById('result-content').innerHTML =
+                    '<p style="color:red;">Error loading results: ' + err.message + '</p>';
+            });
+    });
+</script>
+<script>if("serviceWorker" in navigator){navigator.serviceWorker.register("service-worker.js");}</script>
+</body>
+</html>
