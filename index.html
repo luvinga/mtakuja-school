@@ -14,24 +14,24 @@
 
 <img src="mtakuja.png" alt="Mtakuja Beach Sec School Logo" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; display: block; margin: 0 auto 20px;">
 
-<h1>Mtakuja Beach Sec School</h1>
-<h2>Login Screen</h2>
+<h1 data-i18n="app_title">Mtakuja Beach Sec School</h1>
+<h2 data-i18n="login_title">Login Screen</h2>
 
 <form id="login-form">
-    <label for="role">Login as:</label>
+    <label for="role" data-i18n="login_as">Login as:</label>
     <select id="role" required>
-        <option value="">Select Role</option>
-        <option value="teacher">Teacher</option>
-        <option value="parent">Parent</option>
+        <option value="" data-i18n="select_role">Select Role</option>
+        <option value="teacher" data-i18n="teacher">Teacher</option>
+        <option value="parent" data-i18n="parent">Parent</option>
     </select>
 
-    <label for="phone">Phone Number:</label>
+    <label for="phone" data-i18n="phone">Phone Number:</label>
     <input type="tel" id="phone" placeholder="Enter Phone Number" required>
 
-    <label for="password">Password:</label>
+    <label for="password" data-i18n="password">Password:</label>
     <input type="password" id="password" placeholder="Enter Password" required>
 
-    <button type="submit" id="login-btn">Login</button>
+    <button type="submit" id="login-btn" data-i18n="login_btn">Login</button>
 </form>
 
 <div id="error-message" style="color: red; display: none;"></div>

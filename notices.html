@@ -106,16 +106,16 @@
 <div class="app-container">
 
 <button class="back-btn" onclick="goBack()">← Back</button>
-<h2>📢 School Notices</h2>
+<h2 data-i18n="notices_title">📢 School Notices</h2>
 
 <!-- Post Notice form (admin only, shown by JS) -->
 <div id="post-notice-section" style="display:none;">
     <div class="notice-form">
-        <h3>Post a Notice</h3>
-        <label>Title</label>
+        <h3 data-i18n="post_notice">Post a Notice</h3>
+        <label data-i18n="notice_title_label">Title</label>
         <input type="text" id="notice-title" placeholder="Notice title" required>
 
-        <label>Message</label>
+        <label data-i18n="notice_body_label">Message</label>
         <textarea id="notice-body" placeholder="Write your notice here..."></textarea>
 
         <div class="urgent-row">
@@ -123,7 +123,7 @@
             <label for="notice-urgent" style="margin-top:0; font-weight:normal; color:#c62828;">Mark as Urgent</label>
         </div>
 
-        <button type="submit" onclick="postNotice()">Post Notice</button>
+        <button type="submit" onclick="postNotice()" data-i18n="post_btn">Post Notice</button>
         <div id="status-msg"></div>
     </div>
 </div>

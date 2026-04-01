@@ -102,7 +102,7 @@
 <div class="app-container">
 
 <button class="back-btn" onclick="goTo('admin-dashboard.html')">← Back</button>
-<h2>📤 Export Class Results</h2>
+<h2 data-i18n="export_title">📤 Export Class Results</h2>
 
 <div class="controls" id="no-print">
     <div>
@@ -124,7 +124,7 @@
             <option value="Arts">Arts</option>
         </select>
     </div>
-    <button onclick="loadResults()">Load Results</button>
+    <button onclick="loadResults()" data-i18n="load_results">Load Results</button>
 </div>
 
 <!-- Letterhead shown when printing -->
@@ -139,7 +139,7 @@
 <div id="results-area"><p style="color:#888;text-align:center;">Select a class and click Load Results.</p></div>
 
 <div class="print-section" id="print-btn-wrap" style="display:none;">
-    <button class="print-btn" onclick="window.print()">🖨️ Print Results</button>
+    <button class="print-btn" onclick="window.print()" data-i18n="print_results">🖨️ Print Results</button>
 </div>
 
 </div>

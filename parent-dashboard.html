@@ -16,14 +16,14 @@
 
 <h2 id="welcome-msg">👨‍👩‍👧 Parent Dashboard</h2>
 
-<button onclick="goTo('parent-attendance.html')">View Attendance Report</button>
-<button onclick="goTo('parent-grades.html')">View Grades Report</button>
-<button onclick="goTo('results.html')">View Result Slip</button>
-<button onclick="goTo('notices.html')">View Notices</button>
-<button onclick="goTo('timetable.html')">📅 View Timetable</button>
-<button onclick="goTo('notifications.html')" id="notif-btn">🔔 Notifications</button>
+<button onclick="goTo('parent-attendance.html')" data-i18n="view_attendance">View Attendance Report</button>
+<button onclick="goTo('parent-grades.html')" data-i18n="view_grades">View Grades Report</button>
+<button onclick="goTo('results.html')" data-i18n="view_result">View Result Slip</button>
+<button onclick="goTo('notices.html')" data-i18n="view_notices">View Notices</button>
+<button onclick="goTo('timetable.html')" data-i18n="view_timetable">📅 View Timetable</button>
+<button onclick="goTo('notifications.html')" id="notif-btn" data-i18n="notifications">🔔 Notifications</button>
 
-<button onclick="logout()" style="background: #f44336;">Logout</button>
+<button onclick="logout()" style="background: #f44336;" data-i18n="logout">Logout</button>
 
 </div>
 <script src="firebase-app-compat.js"></script>
