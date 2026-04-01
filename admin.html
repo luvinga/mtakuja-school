@@ -196,11 +196,8 @@
             </select>
         </div>
 
-        <label>Parent Phone</label>
-        <input type="tel" id="s-parent-phone" placeholder="e.g. 0714300399" required>
-
-        <label>Parent Password</label>
-        <input type="password" id="s-parent-password" placeholder="Parent login password" required>
+        <label>Parent Phone <small style="font-weight:normal;color:#888;">(optional — can be assigned later)</small></label>
+        <input type="tel" id="s-parent-phone" placeholder="e.g. 0714300399">
 
         <button type="submit">Add Student</button>
         <div id="add-student-status" class="status-msg"></div>
@@ -298,21 +295,19 @@
             statusEl.className = 'status-msg err';
             return;
         }
-        if (!parentPhone) { statusEl.textContent = 'Parent phone is required.'; statusEl.className = 'status-msg err'; return; }
-
         const doc = {
             name:            document.getElementById('s-name').value.trim(),
             form:            form,
             stream:          stream,
-            parentPhone:     parentPhone,
-            parentPassword:  document.getElementById('s-parent-password').value,
+            parentPhone:     parentPhone || null,
+            parentPassword:  parentPhone ? 'parent123' : null,
             passwordChanged: false
         };
 
         statusEl.textContent = 'Saving...';
         statusEl.className = 'status-msg';
 
-        db.collection('students').doc(parentPhone).set(doc)
+        db.collection('students').add(doc)
             .then(function() {
                 statusEl.textContent = 'Student added successfully!';
                 statusEl.className = 'status-msg ok';
@@ -392,10 +387,11 @@
                 // Group by form + stream
                 const groups = {};
                 snapshot.forEach(function(docSnap) {
-                    const s = docSnap.data();
-                    const groupKey = s.form + (s.stream ? ' — ' + s.stream : '');
+                    const s = docSnap;
+                    const data = docSnap.data();
+                    const groupKey = data.form + (data.stream ? ' — ' + data.stream : '');
                     if (!groups[groupKey]) groups[groupKey] = [];
-                    groups[groupKey].push(s);
+                    groups[groupKey].push(docSnap);
                 });
 
                 Object.keys(groups).sort().forEach(function(groupKey) {
@@ -404,8 +400,10 @@
                     header.textContent = groupKey;
                     container.appendChild(header);
 
-                    groups[groupKey].sort(function(a, b) { return a.name.localeCompare(b.name); });
-                    groups[groupKey].forEach(function(s) {
+                    groups[groupKey].sort(function(a, b) { return a.data().name.localeCompare(b.data().name); });
+                    groups[groupKey].forEach(function(docSnap) {
+                        const s = docSnap.data ? docSnap.data() : docSnap;
+                        const docId = docSnap.id || s.parentPhone;
                         const item = document.createElement('div');
                         item.className = 'list-item';
 
@@ -414,24 +412,34 @@
                         const strong = document.createElement('strong');
                         strong.textContent = s.name;
                         const small = document.createElement('small');
-                        small.textContent = 'Parent: ' + s.parentPhone;
+                        small.textContent = s.parentPhone ? 'Parent: ' + s.parentPhone : '⚠️ No parent assigned';
+                        small.style.color = s.parentPhone ? '#888' : '#e65100';
                         info.appendChild(strong);
                         info.appendChild(small);
 
                         const sBtnGroup = document.createElement('div');
                         sBtnGroup.className = 'btn-group';
 
-                        const sResetBtn = document.createElement('button');
-                        sResetBtn.className = 'reset-btn';
-                        sResetBtn.textContent = 'Reset Password';
-                        sResetBtn.onclick = function() { resetStudentPassword(s.parentPhone, s.name); };
+                        if (!s.parentPhone) {
+                            const assignBtn = document.createElement('button');
+                            assignBtn.className = 'reset-btn';
+                            assignBtn.textContent = 'Set Parent';
+                            assignBtn.style.background = '#2196F3';
+                            assignBtn.onclick = function() { assignParent(docId, s.name); };
+                            sBtnGroup.appendChild(assignBtn);
+                        } else {
+                            const sResetBtn = document.createElement('button');
+                            sResetBtn.className = 'reset-btn';
+                            sResetBtn.textContent = 'Reset';
+                            sResetBtn.onclick = function() { resetStudentPassword(docId, s.name); };
+                            sBtnGroup.appendChild(sResetBtn);
+                        }
 
                         const delBtn = document.createElement('button');
                         delBtn.className = 'delete-btn';
                         delBtn.textContent = 'Delete';
-                        delBtn.onclick = function() { deleteStudent(s.parentPhone, s.name); };
+                        delBtn.onclick = function() { deleteStudent(docId, s.name); };
 
-                        sBtnGroup.appendChild(sResetBtn);
                         sBtnGroup.appendChild(delBtn);
                         item.appendChild(info);
                         item.appendChild(sBtnGroup);
@@ -453,11 +461,26 @@
     }
 
     // ── Delete Student ──────────────────────────────────────────────────────────
-    function deleteStudent(parentPhone, name) {
+    function deleteStudent(docId, name) {
         if (!confirm('Delete student "' + name + '"? This cannot be undone.')) return;
-        db.collection('students').doc(parentPhone).delete()
+        db.collection('students').doc(docId).delete()
             .then(function() { loadStudentsList(); })
             .catch(function(err) { alert('Error deleting student: ' + err.message); });
+    }
+
+    // ── Assign Parent Phone ─────────────────────────────────────────────────────
+    function assignParent(docId, studentName) {
+        const phone = prompt('Enter parent phone number for ' + studentName + ':');
+        if (!phone || !phone.trim()) return;
+        const trimmedPhone = phone.trim();
+        db.collection('students').doc(docId).update({
+            parentPhone:     trimmedPhone,
+            parentPassword:  'parent123',
+            passwordChanged: false
+        }).then(function() {
+            alert('Parent assigned! Default password is "parent123". They will be asked to change it on first login.');
+            loadStudentsList();
+        }).catch(function(err) { alert('Error: ' + err.message); });
     }
 
     // ── Reset Teacher Password ──────────────────────────────────────────────────
@@ -471,9 +494,9 @@
     }
 
     // ── Reset Student (Parent) Password ────────────────────────────────────────
-    function resetStudentPassword(parentPhone, name) {
+    function resetStudentPassword(docId, name) {
         if (!confirm('Reset password for parent of "' + name + '"? They will be asked to set a new password on next login.')) return;
-        db.collection('students').doc(parentPhone).update({ passwordChanged: false })
+        db.collection('students').doc(docId).update({ passwordChanged: false })
             .then(function() {
                 alert('Password reset. User will be asked to set a new password on next login.');
             })

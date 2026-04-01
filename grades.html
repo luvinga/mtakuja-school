@@ -40,15 +40,31 @@
         const label = stream ? cls + ' (' + stream + ')' : cls;
         document.getElementById('grades-title').textContent = 'Grades — ' + label;
 
-        // Populate subjects
-        const subjects = getCurrentSubjects();
+        // Populate subjects — admin sees all, subject teacher sees only their subject
+        let teacher = null;
+        try { teacher = JSON.parse(localStorage.getItem('teacherData')); } catch(e) {}
+
         const select = document.getElementById('subject-select');
-        subjects.forEach(function(subject) {
+        const subjectLabel = document.querySelector('label[for="subject-select"]');
+
+        if (teacher && teacher.role !== 'admin' && teacher.subject) {
+            // Subject teacher — lock to their subject, no dropdown needed
             const opt = document.createElement('option');
-            opt.value = subject;
-            opt.textContent = subject;
+            opt.value = teacher.subject;
+            opt.textContent = teacher.subject;
             select.appendChild(opt);
-        });
+            select.disabled = true;
+            subjectLabel.textContent = 'Subject:';
+        } else {
+            // Admin — show all subjects
+            const subjects = getCurrentSubjects();
+            subjects.forEach(function(subject) {
+                const opt = document.createElement('option');
+                opt.value = subject;
+                opt.textContent = subject;
+                select.appendChild(opt);
+            });
+        }
 
         // Load students from Firestore
         loadStudentsForClass(cls, stream || null)
