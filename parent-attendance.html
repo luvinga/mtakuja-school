@@ -8,38 +8,88 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        .attendance-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .attendance-table th { background: #4CAF50; color: white; padding: 8px; text-align: left; }
+        .attendance-table td { padding: 8px; border-bottom: 1px solid #ddd; font-size: 14px; }
+        .attendance-table tr:nth-child(even) { background: #f9f9f9; }
+        .present { color: #4CAF50; font-weight: bold; }
+        .absent  { color: #f44336; font-weight: bold; }
+        .summary { background: #f0f0f0; padding: 10px; border-radius: 8px; margin: 10px 0; font-size: 14px; }
+    </style>
 </head>
 <body>
 <div class="app-container">
 
 <button class="back-btn" onclick="goBack()">← Back</button>
 
-<h2>Child Attendance</h2>
+<h2 id="attendance-title">📋 Attendance Report</h2>
 
-<div id="attendance-display"></div>
+<div id="attendance-display"><p>Loading...</p></div>
 
 </div>
-<script src="script.js"></script>
+<script src="firebase-app-compat.js"></script>
+<script src="firebase-firestore-compat.js"></script>
+<script src="firebase.js?v=2"></script>
+<script src="script.js?v=2"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        if (checkAuth() !== 'parent') { goTo('index.html'); return; }
+
         const student = localStorage.getItem('student');
-        if (!student) {
-            goTo('index.html');
-            return;
-        }
-        let records = JSON.parse(localStorage.getItem('attendanceRecords') || '[]');
-        let display = document.getElementById('attendance-display');
-        if (records.length === 0) {
-            display.innerHTML = '<p>No attendance records found.</p>';
-        } else {
-            let latest = records[records.length - 1];
-            display.innerHTML = `<h3>Latest Attendance (${latest.date})</h3>`;
-            if (latest.attendance[student]) {
-                display.innerHTML += `<p>${student}: ${latest.attendance[student]}</p>`;
-            } else {
-                display.innerHTML += `<p>No record for ${student}</p>`;
-            }
-        }
+        const cls     = localStorage.getItem('studentClass');
+        const stream  = localStorage.getItem('studentStream') || null;
+        const display = document.getElementById('attendance-display');
+
+        document.getElementById('attendance-title').textContent = '📋 Attendance — ' + student;
+
+        db.collection('attendance')
+            .where('class', '==', cls)
+            .where('stream', '==', stream)
+            .orderBy('date', 'desc')
+            .get()
+            .then(function(snapshot) {
+                // Filter to records that include this student
+                const relevant = [];
+                snapshot.forEach(function(doc) {
+                    const record = doc.data();
+                    if (record.attendance && record.attendance[student]) {
+                        relevant.push(record);
+                    }
+                });
+
+                if (relevant.length === 0) {
+                    display.innerHTML = '<p>No attendance records found yet.</p>';
+                    return;
+                }
+
+                // Summary
+                const total   = relevant.length;
+                const present = relevant.filter(function(r) { return r.attendance[student] === 'Present'; }).length;
+                const absent  = total - present;
+                const pct     = Math.round((present / total) * 100);
+
+                let html = '<div class="summary">'
+                    + 'Total Days: <strong>' + total + '</strong> &nbsp;|&nbsp;'
+                    + 'Present: <strong class="present">' + present + '</strong> &nbsp;|&nbsp;'
+                    + 'Absent: <strong class="absent">' + absent + '</strong> &nbsp;|&nbsp;'
+                    + 'Attendance: <strong>' + pct + '%</strong>'
+                    + '</div>';
+
+                html += '<table class="attendance-table"><thead><tr><th>Date</th><th>Status</th></tr></thead><tbody>';
+
+                relevant.forEach(function(record) {
+                    const status   = record.attendance[student];
+                    const cssClass = status === 'Present' ? 'present' : 'absent';
+                    html += '<tr><td>' + record.date + '</td><td class="' + cssClass + '">' + status + '</td></tr>';
+                });
+
+                html += '</tbody></table>';
+                display.innerHTML = html;
+            })
+            .catch(function(err) {
+                display.innerHTML = '<p style="color:red;">Error loading attendance: ' + err.message + '</p>';
+            });
     });
 </script>
 <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("service-worker.js");}</script>

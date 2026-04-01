@@ -14,44 +14,85 @@
 
 <button class="back-btn" onclick="goBack()">← Back</button>
 
-<h2>Enter Grades</h2>
-
-<label for="class-select">Select Class:</label>
-<select id="class-select">
-    <option value="10A">10A</option>
-    <option value="10B">10B</option>
-</select>
+<h2 id="grades-title">Enter Grades</h2>
 
 <label for="subject-select">Select Subject:</label>
-<select id="subject-select">
-    <option value="Math">Math</option>
-    <option value="English">English</option>
-    <option value="Science">Science</option>
-</select>
+<select id="subject-select" onchange="renderStudentList()"></select>
 
+<p id="loading-msg" style="text-align:center; color:#666;">Loading students...</p>
 <div id="grades-list"></div>
 
 <br>
-<button onclick="saveGrades()">Save Grades</button>
+<button id="save-btn" onclick="saveGrades()" style="display:none;">Save Grades</button>
 
 </div>
-<script src="script.js"></script>
+<script src="firebase-app-compat.js"></script>
+<script src="firebase-firestore-compat.js"></script>
+<script src="firebase.js"></script>
+<script src="script.js?v=2"></script>
 <script>
+    var loadedStudents = [];
+
     document.addEventListener('DOMContentLoaded', function() {
-        let list = document.getElementById('grades-list');
-        // Assuming students is defined in script.js
-        if (typeof students !== 'undefined') {
-            students.forEach(student => {
-                let p = document.createElement('p');
-                p.textContent = student + ' ';
-                let input = document.createElement('input');
-                input.type = 'text';
-                input.placeholder = 'Enter Grade';
-                p.appendChild(input);
-                list.appendChild(p);
+        const cls = getSelectedClass();
+        if (!cls) { goTo('teacher-dashboard.html'); return; }
+        const stream = getSelectedStream();
+        const label = stream ? cls + ' (' + stream + ')' : cls;
+        document.getElementById('grades-title').textContent = 'Grades — ' + label;
+
+        // Populate subjects
+        const subjects = getCurrentSubjects();
+        const select = document.getElementById('subject-select');
+        subjects.forEach(function(subject) {
+            const opt = document.createElement('option');
+            opt.value = subject;
+            opt.textContent = subject;
+            select.appendChild(opt);
+        });
+
+        // Load students from Firestore
+        loadStudentsForClass(cls, stream || null)
+            .then(function(students) {
+                document.getElementById('loading-msg').style.display = 'none';
+                document.getElementById('save-btn').style.display = 'block';
+
+                if (students.length === 0) {
+                    document.getElementById('loading-msg').textContent = 'No students found for this class.';
+                    document.getElementById('loading-msg').style.display = 'block';
+                    return;
+                }
+
+                // Sort alphabetically
+                students.sort(function(a, b) { return a.name.localeCompare(b.name); });
+                loadedStudents = students;
+                renderStudentList();
+            })
+            .catch(function(err) {
+                document.getElementById('loading-msg').textContent = 'Error loading students: ' + err.message;
             });
-        }
     });
+
+    function renderStudentList() {
+        const list = document.getElementById('grades-list');
+        list.innerHTML = '';
+        loadedStudents.forEach(function(student) {
+            const div = document.createElement('div');
+            div.className = 'student-row';
+
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'student-name';
+            nameSpan.textContent = student.name;
+
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.placeholder = 'Grade';
+            input.style = 'width:70px; padding:6px; border-radius:8px; border:1px solid #ccc;';
+
+            div.appendChild(nameSpan);
+            div.appendChild(input);
+            list.appendChild(div);
+        });
+    }
 </script>
 <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("service-worker.js");}</script>
 </body>

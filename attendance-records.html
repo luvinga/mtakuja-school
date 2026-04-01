@@ -14,28 +14,55 @@
 
 <button class="back-btn" onclick="goBack()">← Back</button>
 
-<h2>Attendance Records</h2>
+<h2 id="records-title">Attendance Records</h2>
 
-<div id="records-list"></div>
+<div id="records-list"><p>Loading...</p></div>
 
 </div>
-<script src="script.js"></script>
+<script src="firebase-app-compat.js"></script>
+<script src="firebase-firestore-compat.js"></script>
+<script src="firebase.js?v=2"></script>
+<script src="script.js?v=2"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        let records = JSON.parse(localStorage.getItem('attendanceRecords') || '[]');
-        let list = document.getElementById('records-list');
-        if (records.length === 0) {
-            list.innerHTML = '<p>No records found.</p>';
-        } else {
-            records.forEach(record => {
-                let div = document.createElement('div');
-                div.innerHTML = `<h3>${record.date}</h3>`;
-                for (let student in record.attendance) {
-                    div.innerHTML += `<p>${student}: ${record.attendance[student]}</p>`;
+        const cls    = getSelectedClass();
+        const stream = getSelectedStream() || null;
+        const list   = document.getElementById('records-list');
+
+        if (!cls) { goTo('teacher-dashboard.html'); return; }
+
+        const label = stream ? cls + ' — ' + stream : cls;
+        document.getElementById('records-title').textContent = 'Attendance Records — ' + label;
+
+        db.collection('attendance')
+            .where('class', '==', cls)
+            .where('stream', '==', stream)
+            .orderBy('date', 'desc')
+            .get()
+            .then(function(snapshot) {
+                if (snapshot.empty) {
+                    list.innerHTML = '<p>No records found.</p>';
+                    return;
                 }
-                list.appendChild(div);
+                list.innerHTML = '';
+                snapshot.forEach(function(doc) {
+                    const record = doc.data();
+                    const div = document.createElement('div');
+                    div.style.marginBottom = '16px';
+                    let html = '<h3>' + record.date + '</h3>';
+                    const att = record.attendance || {};
+                    for (const student in att) {
+                        const status = att[student];
+                        const color  = status === 'Present' ? '#4CAF50' : '#f44336';
+                        html += '<p>' + student + ': <strong style="color:' + color + '">' + status + '</strong></p>';
+                    }
+                    div.innerHTML = html;
+                    list.appendChild(div);
+                });
+            })
+            .catch(function(err) {
+                list.innerHTML = '<p style="color:red;">Error loading records: ' + err.message + '</p>';
             });
-        }
     });
 </script>
 <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("service-worker.js");}</script>

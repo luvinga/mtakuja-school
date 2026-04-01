@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Seed Firestore Data</title>
+    <link rel="stylesheet" href="style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        #log { margin-top: 20px; font-family: monospace; font-size: 13px; color: #333; }
+        #log p { margin: 4px 0; }
+        #log .ok  { color: green; }
+        #log .err { color: red; }
+    </style>
+</head>
+<body>
+<div class="app-container">
+    <h2>Seed Firestore Data</h2>
+    <p style="color:#666; text-align:center;">Run this once to populate the database with teachers and students.</p>
+    <button id="seed-btn" onclick="seedData()">Seed Data</button>
+    <div id="log"></div>
+</div>
+
+<script src="firebase-app-compat.js"></script>
+<script src="firebase-firestore-compat.js"></script>
+<script src="firebase.js"></script>
+<script>
+// ─── Teachers Data ────────────────────────────────────────────────────────────
+const teachersToSeed = [
+    { phone: '0700000000', name: 'Newton',              password: 'newton123',       role: 'admin',    subject: null,                 forms: [],                           classTeacher: null },
+    { phone: '0700000001', name: 'Zawadi Mwita',        password: 'zawadi123',       role: 'teacher',  subject: 'Mathematics',        forms: ['Form 1', 'Form 4'],          classTeacher: null },
+    { phone: '0700000002', name: 'Ismail Khamis',       password: 'ismail123',       role: 'teacher',  subject: 'Mathematics',        forms: ['Form 2', 'Form 3'],          classTeacher: null },
+    { phone: '0700000003', name: 'Pendo Msuya',         password: 'pendo123',        role: 'teacher',  subject: 'English',            forms: ['Form 1', 'Form 4'],          classTeacher: { form: 'Form 1', stream: null } },
+    { phone: '0700000004', name: 'Tumaini Ngowi',       password: 'tumaini123',      role: 'teacher',  subject: 'English',            forms: ['Form 2', 'Form 3'],          classTeacher: { form: 'Form 2', stream: null } },
+    { phone: '0700000005', name: 'Boniface Mwakimako',  password: 'boniface123',     role: 'teacher',  subject: 'Kiswahili',          forms: ['Form 1', 'Form 4'],          classTeacher: null },
+    { phone: '0700000006', name: 'Scholastica Kimaro',  password: 'scholastica123',  role: 'teacher',  subject: 'Kiswahili',          forms: ['Form 2', 'Form 3'],          classTeacher: null },
+    { phone: '0700000007', name: 'Rajabu Ally',         password: 'rajabu123',       role: 'teacher',  subject: 'Biology',            forms: ['Form 1', 'Form 4'],          classTeacher: null },
+    { phone: '0700000008', name: 'Veronika Massawe',    password: 'veronika123',     role: 'teacher',  subject: 'Biology',            forms: ['Form 2', 'Form 3'],          classTeacher: { form: 'Form 3', stream: 'Science' } },
+    { phone: '0700000009', name: 'Augustino Mwanga',    password: 'augustino123',    role: 'teacher',  subject: 'Chemistry',          forms: ['Form 1', 'Form 4'],          classTeacher: { form: 'Form 3', stream: 'Business' } },
+    { phone: '0700000010', name: 'Lilian Mhagama',      password: 'lilian123',       role: 'teacher',  subject: 'Chemistry',          forms: ['Form 2', 'Form 3'],          classTeacher: null },
+    { phone: '0700000011', name: 'Yusuf Bandari',       password: 'yusuf123',        role: 'teacher',  subject: 'Physics',            forms: ['Form 1', 'Form 4'],          classTeacher: null },
+    { phone: '0700000012', name: 'Theresia Mollel',     password: 'theresia123',     role: 'teacher',  subject: 'Physics',            forms: ['Form 2', 'Form 3'],          classTeacher: { form: 'Form 3', stream: 'Arts' } },
+    { phone: '0700000013', name: 'Rashid Mwakipesile',  password: 'rashid123',       role: 'teacher',  subject: 'History',            forms: ['Form 1', 'Form 4'],          classTeacher: null },
+    { phone: '0700000014', name: 'Consolata Msangi',    password: 'consolata123',    role: 'teacher',  subject: 'History',            forms: ['Form 2', 'Form 3'],          classTeacher: { form: 'Form 4', stream: 'Science' } },
+    { phone: '0700000015', name: 'Dickson Mwasanga',    password: 'dickson123',      role: 'teacher',  subject: 'Geography',          forms: ['Form 1', 'Form 4'],          classTeacher: { form: 'Form 4', stream: 'Business' } },
+    { phone: '0700000016', name: 'Magdalena Ngassa',    password: 'magdalena123',    role: 'teacher',  subject: 'Geography',          forms: ['Form 2', 'Form 3'],          classTeacher: null },
+    { phone: '0700000017', name: 'Selemani Mwakibete',  password: 'selemani123',     role: 'teacher',  subject: 'Civics',             forms: ['Form 1', 'Form 4'],          classTeacher: null },
+    { phone: '0700000018', name: 'Felicitas Mwita',     password: 'felicitas123',    role: 'teacher',  subject: 'Civics',             forms: ['Form 2', 'Form 3'],          classTeacher: null },
+    { phone: '0700000019', name: 'Josephat Mkwawa',     password: 'josephat123',     role: 'teacher',  subject: 'Agriculture',        forms: ['Form 1', 'Form 2'],          classTeacher: null },
+    { phone: '0700000020', name: 'Dorothea Mwakijele',  password: 'dorothea123',     role: 'teacher',  subject: 'Agriculture',        forms: ['Form 1', 'Form 2'],          classTeacher: null },
+    { phone: '0700000021', name: 'Anselm Kimambo',      password: 'anselm123',       role: 'teacher',  subject: 'English Literature', forms: ['Form 1', 'Form 2'],          classTeacher: null },
+    { phone: '0700000022', name: 'Perpetua Mwakisyala', password: 'perpetua123',     role: 'teacher',  subject: 'English Literature', forms: ['Form 1', 'Form 2'],          classTeacher: { form: 'Form 4', stream: 'Arts' } }
+];
+
+// ─── Students Data ────────────────────────────────────────────────────────────
+// Derived from classStudents + parentStudents (phone becomes parentPhone, password becomes parentPassword)
+const studentsToSeed = [
+    // Form 1
+    { name: 'Amina Hassan',      form: 'Form 1', stream: null,       parentPhone: '0714300300', parentPassword: 'parent1'  },
+    { name: 'Juma Mwangi',       form: 'Form 1', stream: null,       parentPhone: '0714300301', parentPassword: 'parent2'  },
+    { name: 'Fatuma Said',       form: 'Form 1', stream: null,       parentPhone: '0714300302', parentPassword: 'parent3'  },
+    { name: 'Baraka Kimani',     form: 'Form 1', stream: null,       parentPhone: '0714300303', parentPassword: 'parent4'  },
+    { name: 'Neema Odhiambo',   form: 'Form 1', stream: null,       parentPhone: '0714300304', parentPassword: 'parent5'  },
+    // Form 2
+    { name: 'Salim Abdallah',    form: 'Form 2', stream: null,       parentPhone: '0714300305', parentPassword: 'parent6'  },
+    { name: 'Grace Nyambura',   form: 'Form 2', stream: null,       parentPhone: '0714300306', parentPassword: 'parent7'  },
+    { name: 'Omar Rashid',       form: 'Form 2', stream: null,       parentPhone: '0714300307', parentPassword: 'parent8'  },
+    { name: 'Mercy Wanjiku',    form: 'Form 2', stream: null,       parentPhone: '0714300308', parentPassword: 'parent9'  },
+    { name: 'Hassan Mwamba',    form: 'Form 2', stream: null,       parentPhone: '0714300309', parentPassword: 'parent10' },
+    // Form 3 Science
+    { name: 'David Msigwa',      form: 'Form 3', stream: 'Science',  parentPhone: '0714300310', parentPassword: 'parent11' },
+    { name: 'Rehema Mkenda',     form: 'Form 3', stream: 'Science',  parentPhone: '0714300311', parentPassword: 'parent12' },
+    { name: 'Patrick Mwakasege',form: 'Form 3', stream: 'Science',  parentPhone: '0714300312', parentPassword: 'parent13' },
+    { name: 'Judith Mwanza',    form: 'Form 3', stream: 'Science',  parentPhone: '0714300313', parentPassword: 'parent14' },
+    { name: 'Emmanuel Kimaro',   form: 'Form 3', stream: 'Science',  parentPhone: '0714300314', parentPassword: 'parent15' },
+    // Form 3 Business
+    { name: 'Rose Mwenye',       form: 'Form 3', stream: 'Business', parentPhone: '0714300315', parentPassword: 'parent16' },
+    { name: 'Hamisi Juma',       form: 'Form 3', stream: 'Business', parentPhone: '0714300316', parentPassword: 'parent17' },
+    { name: 'Cecilia Mwanga',    form: 'Form 3', stream: 'Business', parentPhone: '0714300317', parentPassword: 'parent18' },
+    { name: 'Rashidi Ally',      form: 'Form 3', stream: 'Business', parentPhone: '0714300318', parentPassword: 'parent19' },
+    { name: 'Beatrice Shayo',    form: 'Form 3', stream: 'Business', parentPhone: '0714300319', parentPassword: 'parent20' },
+    // Form 3 Arts
+    { name: 'Asha Mwalimu',      form: 'Form 3', stream: 'Arts',     parentPhone: '0714300320', parentPassword: 'parent21' },
+    { name: 'Joseph Mwenda',     form: 'Form 3', stream: 'Arts',     parentPhone: '0714300321', parentPassword: 'parent22' },
+    { name: 'Zuhura Hamad',      form: 'Form 3', stream: 'Arts',     parentPhone: '0714300322', parentPassword: 'parent23' },
+    { name: 'Francis Mwangi',    form: 'Form 3', stream: 'Arts',     parentPhone: '0714300323', parentPassword: 'parent24' },
+    { name: 'Amina Juma',        form: 'Form 3', stream: 'Arts',     parentPhone: '0714300324', parentPassword: 'parent25' },
+    // Form 4 Science
+    { name: 'Michael Mwambire',  form: 'Form 4', stream: 'Science',  parentPhone: '0714300325', parentPassword: 'parent26' },
+    { name: 'Stella Mwangi',     form: 'Form 4', stream: 'Science',  parentPhone: '0714300326', parentPassword: 'parent27' },
+    { name: 'Charles Msekwa',    form: 'Form 4', stream: 'Science',  parentPhone: '0714300327', parentPassword: 'parent28' },
+    { name: 'Agnes Kimaro',      form: 'Form 4', stream: 'Science',  parentPhone: '0714300328', parentPassword: 'parent29' },
+    { name: 'Robert Mwenda',     form: 'Form 4', stream: 'Science',  parentPhone: '0714300329', parentPassword: 'parent30' },
+    // Form 4 Business
+    { name: 'Fatuma Ally',       form: 'Form 4', stream: 'Business', parentPhone: '0714300330', parentPassword: 'parent31' },
+    { name: 'Said Mwamba',       form: 'Form 4', stream: 'Business', parentPhone: '0714300331', parentPassword: 'parent32' },
+    { name: 'Monica Ochieng',    form: 'Form 4', stream: 'Business', parentPhone: '0714300332', parentPassword: 'parent33' },
+    { name: 'Ibrahim Mwangi',    form: 'Form 4', stream: 'Business', parentPhone: '0714300333', parentPassword: 'parent34' },
+    { name: 'Catherine Kimani',  form: 'Form 4', stream: 'Business', parentPhone: '0714300334', parentPassword: 'parent35' },
+    // Form 4 Arts
+    { name: 'Leila Hassan',      form: 'Form 4', stream: 'Arts',     parentPhone: '0714300335', parentPassword: 'parent36' },
+    { name: 'George Mwenda',     form: 'Form 4', stream: 'Arts',     parentPhone: '0714300336', parentPassword: 'parent37' },
+    { name: 'Hadija Rashid',     form: 'Form 4', stream: 'Arts',     parentPhone: '0714300337', parentPassword: 'parent38' },
+    { name: 'Peter Msigwa',      form: 'Form 4', stream: 'Arts',     parentPhone: '0714300338', parentPassword: 'parent39' },
+    { name: 'Mary Kimaro',       form: 'Form 4', stream: 'Arts',     parentPhone: '0714300339', parentPassword: 'parent40' }
+];
+
+function log(msg, type) {
+    var p = document.createElement('p');
+    p.textContent = msg;
+    if (type) p.className = type;
+    document.getElementById('log').appendChild(p);
+}
+
+function seedData() {
+    document.getElementById('seed-btn').disabled = true;
+    document.getElementById('log').innerHTML = '';
+    log('Starting seed...');
+
+    var teacherPromises = teachersToSeed.map(function(t) {
+        var doc = {
+            name: t.name,
+            phone: t.phone,
+            password: t.password,
+            role: t.role,
+            subject: t.subject,
+            forms: t.forms,
+            classTeacher: t.classTeacher
+        };
+        return db.collection('teachers').doc(t.phone).set(doc)
+            .then(function() { log('Teacher saved: ' + t.name, 'ok'); })
+            .catch(function(err) { log('Error saving teacher ' + t.name + ': ' + err.message, 'err'); });
+    });
+
+    Promise.all(teacherPromises).then(function() {
+        log('--- All teachers done. Starting students... ---');
+
+        var studentPromises = studentsToSeed.map(function(s) {
+            var doc = {
+                name: s.name,
+                form: s.form,
+                stream: s.stream,
+                parentPhone: s.parentPhone,
+                parentPassword: s.parentPassword
+            };
+            return db.collection('students').doc(s.parentPhone).set(doc)
+                .then(function() { log('Student saved: ' + s.name, 'ok'); })
+                .catch(function(err) { log('Error saving student ' + s.name + ': ' + err.message, 'err'); });
+        });
+
+        return Promise.all(studentPromises);
+    }).then(function() {
+        log('--- Done! Firestore has been seeded. ---', 'ok');
+        document.getElementById('seed-btn').disabled = false;
+    }).catch(function(err) {
+        log('Unexpected error: ' + err.message, 'err');
+        document.getElementById('seed-btn').disabled = false;
+    });
+}
+</script>
+</body>
+</html>

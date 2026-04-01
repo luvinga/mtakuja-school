@@ -14,23 +14,47 @@
 
 <button class="back-btn" onclick="goBack()">← Back</button>
 
-<h2>Students List</h2>
+<h2 id="students-title">Students List</h2>
 
+<p id="loading-msg" style="text-align:center; color:#666;">Loading students...</p>
 <ul id="students-list"></ul>
 
 </div>
-<script src="script.js"></script>
+<script src="firebase-app-compat.js"></script>
+<script src="firebase-firestore-compat.js"></script>
+<script src="firebase.js"></script>
+<script src="script.js?v=2"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        let list = document.getElementById('students-list');
-        if (typeof students !== 'undefined') {
-            students.forEach(student => {
-                let li = document.createElement('li');
-                li.textContent = student;
-                li.onclick = () => viewProfile(student);
-                list.appendChild(li);
+        const cls = getSelectedClass();
+        if (!cls) { goTo('teacher-dashboard.html'); return; }
+        const stream = getSelectedStream();
+        const label = stream ? cls + ' (' + stream + ')' : cls;
+        document.getElementById('students-title').textContent = 'Students — ' + label;
+
+        loadStudentsForClass(cls, stream || null)
+            .then(function(students) {
+                document.getElementById('loading-msg').style.display = 'none';
+                const list = document.getElementById('students-list');
+
+                if (students.length === 0) {
+                    document.getElementById('loading-msg').textContent = 'No students found.';
+                    document.getElementById('loading-msg').style.display = 'block';
+                    return;
+                }
+
+                students.sort(function(a, b) { return a.name.localeCompare(b.name); });
+                students.forEach(function(student) {
+                    const li = document.createElement('li');
+                    li.textContent = student.name;
+                    li.style.cursor = 'pointer';
+                    li.onclick = function() { viewProfile(student.name); };
+                    list.appendChild(li);
+                });
+            })
+            .catch(function(err) {
+                document.getElementById('loading-msg').textContent = 'Error loading students: ' + err.message;
             });
-        }
     });
 </script>
 <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("service-worker.js");}</script>

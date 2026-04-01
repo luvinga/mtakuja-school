@@ -14,7 +14,7 @@
 
 <button class="back-btn" onclick="goBack()">← Back</button>
 
-<h2>👨‍👩‍👧 Parent Dashboard - Welcome, Parent 👋</h2>
+<h2 id="welcome-msg">👨‍👩‍👧 Parent Dashboard</h2>
 
 <button onclick="goTo('parent-attendance.html')">View Attendance Report</button>
 <button onclick="goTo('parent-grades.html')">View Grades Report</button>
@@ -23,12 +23,16 @@
 <button onclick="logout()" style="background: #f44336;">Logout</button>
 
 </div>
-<script src="script.js"></script>
+<script src="script.js?v=2"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        if (checkAuth() !== 'parent') {
-            // Redirect if not parent
-        }
+        if (checkAuth() !== 'parent') goTo('index.html');
+        const student = localStorage.getItem('student');
+        const cls     = localStorage.getItem('studentClass');
+        const stream  = localStorage.getItem('studentStream');
+        const label   = stream ? cls + ' — ' + stream : cls;
+        document.getElementById('welcome-msg').textContent =
+            '👋 Welcome, Parent of ' + student + ' (' + label + ')';
     });
 </script>
 <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("service-worker.js");}</script>

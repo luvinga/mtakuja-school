@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Panel</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4CAF50">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        .section-card {
+            background: #f9f9f9;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 24px;
+            border: 1px solid #ddd;
+        }
+        .section-card h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .admin-form label {
+            display: block;
+            font-weight: bold;
+            margin-top: 10px;
+            margin-bottom: 4px;
+            color: #444;
+        }
+        .admin-form input[type="text"],
+        .admin-form input[type="tel"],
+        .admin-form input[type="password"],
+        .admin-form select {
+            width: 100%;
+            padding: 8px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        .admin-form .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 4px;
+        }
+        .admin-form .checkbox-group label {
+            font-weight: normal;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 0;
+        }
+        .admin-form button[type="submit"] {
+            margin-top: 14px;
+            background: #4CAF50;
+            width: 100%;
+        }
+        .list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+            font-size: 14px;
+        }
+        .list-item:last-child { border-bottom: none; }
+        .list-item .item-info { flex: 1; }
+        .list-item .item-info strong { display: block; }
+        .list-item .item-info small { color: #888; }
+        .delete-btn {
+            background: #f44336;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            min-width: 70px;
+        }
+        .status-msg { margin-top: 8px; font-size: 13px; }
+        .status-msg.ok  { color: green; }
+        .status-msg.err { color: red; }
+        .group-header {
+            font-weight: bold;
+            color: #555;
+            margin: 12px 0 4px;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+    </style>
+</head>
+<body>
+<div class="app-container">
+
+<button class="back-btn" onclick="goTo('teacher-dashboard.html')">← Back</button>
+<h2 style="text-align:center;">⚙️ Admin Panel</h2>
+
+<!-- ── MANAGE TEACHERS ─────────────────────────────────── -->
+<div class="section-card">
+    <h3>Manage Teachers</h3>
+
+    <!-- Add Teacher Form -->
+    <form id="add-teacher-form" class="admin-form" onsubmit="addTeacher(event)">
+        <label>Name</label>
+        <input type="text" id="t-name" placeholder="Full name" required>
+
+        <label>Phone</label>
+        <input type="tel" id="t-phone" placeholder="e.g. 0700000099" required>
+
+        <label>Password</label>
+        <input type="password" id="t-password" placeholder="Password" required>
+
+        <label>Subject</label>
+        <input type="text" id="t-subject" placeholder="e.g. Mathematics (leave blank for admin)">
+
+        <label>Forms taught</label>
+        <div class="checkbox-group">
+            <label><input type="checkbox" name="t-forms" value="Form 1"> Form 1</label>
+            <label><input type="checkbox" name="t-forms" value="Form 2"> Form 2</label>
+            <label><input type="checkbox" name="t-forms" value="Form 3"> Form 3</label>
+            <label><input type="checkbox" name="t-forms" value="Form 4"> Form 4</label>
+        </div>
+
+        <label>Class Teacher Assignment (optional)</label>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <select id="t-ct-form" style="flex:1; padding:8px; border-radius:8px; border:1px solid #ccc;">
+                <option value="">— No assignment —</option>
+                <option value="Form 1">Form 1</option>
+                <option value="Form 2">Form 2</option>
+                <option value="Form 3">Form 3</option>
+                <option value="Form 4">Form 4</option>
+            </select>
+            <select id="t-ct-stream" style="flex:1; padding:8px; border-radius:8px; border:1px solid #ccc;">
+                <option value="">— No stream —</option>
+                <option value="Science">Science</option>
+                <option value="Business">Business</option>
+                <option value="Arts">Arts</option>
+            </select>
+        </div>
+
+        <label>Role</label>
+        <select id="t-role">
+            <option value="teacher">Teacher</option>
+            <option value="admin">Admin</option>
+        </select>
+
+        <button type="submit">Add Teacher</button>
+        <div id="add-teacher-status" class="status-msg"></div>
+    </form>
+
+    <!-- Teachers List -->
+    <h4 style="margin-top:20px;">All Teachers</h4>
+    <div id="teachers-list"><em style="color:#999;">Loading...</em></div>
+</div>
+
+<!-- ── MANAGE STUDENTS ─────────────────────────────────── -->
+<div class="section-card">
+    <h3>Manage Students</h3>
+
+    <!-- Add Student Form -->
+    <form id="add-student-form" class="admin-form" onsubmit="addStudent(event)">
+        <label>Name</label>
+        <input type="text" id="s-name" placeholder="Full name" required>
+
+        <label>Form</label>
+        <select id="s-form" onchange="toggleStreamField()" required>
+            <option value="">Select form</option>
+            <option value="Form 1">Form 1</option>
+            <option value="Form 2">Form 2</option>
+            <option value="Form 3">Form 3</option>
+            <option value="Form 4">Form 4</option>
+        </select>
+
+        <div id="stream-field" style="display:none;">
+            <label>Stream</label>
+            <select id="s-stream">
+                <option value="">Select stream</option>
+                <option value="Science">Science</option>
+                <option value="Business">Business</option>
+                <option value="Arts">Arts</option>
+            </select>
+        </div>
+
+        <label>Parent Phone</label>
+        <input type="tel" id="s-parent-phone" placeholder="e.g. 0714300399" required>
+
+        <label>Parent Password</label>
+        <input type="password" id="s-parent-password" placeholder="Parent login password" required>
+
+        <button type="submit">Add Student</button>
+        <div id="add-student-status" class="status-msg"></div>
+    </form>
+
+    <!-- Students List -->
+    <h4 style="margin-top:20px;">All Students</h4>
+    <div id="students-list"><em style="color:#999;">Loading...</em></div>
+</div>
+
+<button onclick="logout()" style="background:#f44336; width:100%; margin-top:10px;">Logout</button>
+
+</div>
+<script src="firebase-app-compat.js"></script>
+<script src="firebase-firestore-compat.js"></script>
+<script src="firebase.js"></script>
+<script src="script.js?v=2"></script>
+<script>
+    // ── Auth Guard ──────────────────────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', function() {
+        const role = checkAuth();
+        if (role !== 'admin') {
+            alert('Access denied. Admin only.');
+            goTo('teacher-dashboard.html');
+            return;
+        }
+        loadTeachersList();
+        loadStudentsList();
+    });
+
+    // ── Stream field toggle ─────────────────────────────────────────────────────
+    function toggleStreamField() {
+        const form = document.getElementById('s-form').value;
+        const streamField = document.getElementById('stream-field');
+        streamField.style.display = (form === 'Form 3' || form === 'Form 4') ? 'block' : 'none';
+        if (form !== 'Form 3' && form !== 'Form 4') {
+            document.getElementById('s-stream').value = '';
+        }
+    }
+
+    // ── Add Teacher ─────────────────────────────────────────────────────────────
+    function addTeacher(e) {
+        e.preventDefault();
+        const statusEl = document.getElementById('add-teacher-status');
+        statusEl.textContent = '';
+
+        const phone = document.getElementById('t-phone').value.trim();
+        if (!phone) { statusEl.textContent = 'Phone is required.'; statusEl.className = 'status-msg err'; return; }
+
+        const forms = Array.from(document.querySelectorAll('input[name="t-forms"]:checked')).map(cb => cb.value);
+        const ctForm   = document.getElementById('t-ct-form').value || null;
+        const ctStream = document.getElementById('t-ct-stream').value || null;
+        const classTeacher = ctForm ? { form: ctForm, stream: ctStream } : null;
+
+        const doc = {
+            name:         document.getElementById('t-name').value.trim(),
+            phone:        phone,
+            password:     document.getElementById('t-password').value,
+            role:         document.getElementById('t-role').value,
+            subject:      document.getElementById('t-subject').value.trim() || null,
+            forms:        forms,
+            classTeacher: classTeacher
+        };
+
+        statusEl.textContent = 'Saving...';
+        statusEl.className = 'status-msg';
+
+        db.collection('teachers').doc(phone).set(doc)
+            .then(function() {
+                statusEl.textContent = 'Teacher added successfully!';
+                statusEl.className = 'status-msg ok';
+                document.getElementById('add-teacher-form').reset();
+                loadTeachersList();
+            })
+            .catch(function(err) {
+                statusEl.textContent = 'Error: ' + err.message;
+                statusEl.className = 'status-msg err';
+            });
+    }
+
+    // ── Add Student ─────────────────────────────────────────────────────────────
+    function addStudent(e) {
+        e.preventDefault();
+        const statusEl = document.getElementById('add-student-status');
+        statusEl.textContent = '';
+
+        const form   = document.getElementById('s-form').value;
+        const stream = document.getElementById('s-stream').value || null;
+        const parentPhone = document.getElementById('s-parent-phone').value.trim();
+
+        if (!form) { statusEl.textContent = 'Please select a form.'; statusEl.className = 'status-msg err'; return; }
+        if ((form === 'Form 3' || form === 'Form 4') && !stream) {
+            statusEl.textContent = 'Please select a stream for Form 3/4.';
+            statusEl.className = 'status-msg err';
+            return;
+        }
+        if (!parentPhone) { statusEl.textContent = 'Parent phone is required.'; statusEl.className = 'status-msg err'; return; }
+
+        const doc = {
+            name:           document.getElementById('s-name').value.trim(),
+            form:           form,
+            stream:         stream,
+            parentPhone:    parentPhone,
+            parentPassword: document.getElementById('s-parent-password').value
+        };
+
+        statusEl.textContent = 'Saving...';
+        statusEl.className = 'status-msg';
+
+        db.collection('students').doc(parentPhone).set(doc)
+            .then(function() {
+                statusEl.textContent = 'Student added successfully!';
+                statusEl.className = 'status-msg ok';
+                document.getElementById('add-student-form').reset();
+                document.getElementById('stream-field').style.display = 'none';
+                loadStudentsList();
+            })
+            .catch(function(err) {
+                statusEl.textContent = 'Error: ' + err.message;
+                statusEl.className = 'status-msg err';
+            });
+    }
+
+    // ── Load & Render Teachers ──────────────────────────────────────────────────
+    function loadTeachersList() {
+        const container = document.getElementById('teachers-list');
+        container.innerHTML = '<em style="color:#999;">Loading...</em>';
+        db.collection('teachers').orderBy('name').get()
+            .then(function(snapshot) {
+                container.innerHTML = '';
+                if (snapshot.empty) {
+                    container.innerHTML = '<em style="color:#999;">No teachers found.</em>';
+                    return;
+                }
+                snapshot.forEach(function(docSnap) {
+                    const t = docSnap.data();
+                    const item = document.createElement('div');
+                    item.className = 'list-item';
+
+                    const info = document.createElement('div');
+                    info.className = 'item-info';
+                    const strong = document.createElement('strong');
+                    strong.textContent = t.name + (t.role === 'admin' ? ' (Admin)' : '');
+                    const small = document.createElement('small');
+                    small.textContent = t.phone + (t.subject ? ' — ' + t.subject : '') +
+                        (t.classTeacher ? ' | Class: ' + t.classTeacher.form + (t.classTeacher.stream ? ' ' + t.classTeacher.stream : '') : '');
+                    info.appendChild(strong);
+                    info.appendChild(small);
+
+                    const delBtn = document.createElement('button');
+                    delBtn.className = 'delete-btn';
+                    delBtn.textContent = 'Delete';
+                    delBtn.onclick = function() { deleteTeacher(t.phone, t.name); };
+
+                    item.appendChild(info);
+                    item.appendChild(delBtn);
+                    container.appendChild(item);
+                });
+            })
+            .catch(function(err) {
+                container.innerHTML = '<em style="color:red;">Error: ' + err.message + '</em>';
+            });
+    }
+
+    // ── Load & Render Students ──────────────────────────────────────────────────
+    function loadStudentsList() {
+        const container = document.getElementById('students-list');
+        container.innerHTML = '<em style="color:#999;">Loading...</em>';
+        db.collection('students').orderBy('form').get()
+            .then(function(snapshot) {
+                container.innerHTML = '';
+                if (snapshot.empty) {
+                    container.innerHTML = '<em style="color:#999;">No students found.</em>';
+                    return;
+                }
+
+                // Group by form + stream
+                const groups = {};
+                snapshot.forEach(function(docSnap) {
+                    const s = docSnap.data();
+                    const groupKey = s.form + (s.stream ? ' — ' + s.stream : '');
+                    if (!groups[groupKey]) groups[groupKey] = [];
+                    groups[groupKey].push(s);
+                });
+
+                Object.keys(groups).sort().forEach(function(groupKey) {
+                    const header = document.createElement('div');
+                    header.className = 'group-header';
+                    header.textContent = groupKey;
+                    container.appendChild(header);
+
+                    groups[groupKey].sort(function(a, b) { return a.name.localeCompare(b.name); });
+                    groups[groupKey].forEach(function(s) {
+                        const item = document.createElement('div');
+                        item.className = 'list-item';
+
+                        const info = document.createElement('div');
+                        info.className = 'item-info';
+                        const strong = document.createElement('strong');
+                        strong.textContent = s.name;
+                        const small = document.createElement('small');
+                        small.textContent = 'Parent: ' + s.parentPhone;
+                        info.appendChild(strong);
+                        info.appendChild(small);
+
+                        const delBtn = document.createElement('button');
+                        delBtn.className = 'delete-btn';
+                        delBtn.textContent = 'Delete';
+                        delBtn.onclick = function() { deleteStudent(s.parentPhone, s.name); };
+
+                        item.appendChild(info);
+                        item.appendChild(delBtn);
+                        container.appendChild(item);
+                    });
+                });
+            })
+            .catch(function(err) {
+                container.innerHTML = '<em style="color:red;">Error: ' + err.message + '</em>';
+            });
+    }
+
+    // ── Delete Teacher ──────────────────────────────────────────────────────────
+    function deleteTeacher(phone, name) {
+        if (!confirm('Delete teacher "' + name + '"? This cannot be undone.')) return;
+        db.collection('teachers').doc(phone).delete()
+            .then(function() { loadTeachersList(); })
+            .catch(function(err) { alert('Error deleting teacher: ' + err.message); });
+    }
+
+    // ── Delete Student ──────────────────────────────────────────────────────────
+    function deleteStudent(parentPhone, name) {
+        if (!confirm('Delete student "' + name + '"? This cannot be undone.')) return;
+        db.collection('students').doc(parentPhone).delete()
+            .then(function() { loadStudentsList(); })
+            .catch(function(err) { alert('Error deleting student: ' + err.message); });
+    }
+</script>
+<script>if("serviceWorker" in navigator){navigator.serviceWorker.register("service-worker.js");}</script>
+</body>
+</html>

@@ -31,38 +31,69 @@
     <label for="password">Password:</label>
     <input type="password" id="password" placeholder="Enter Password" required>
 
-    <button type="submit">Login</button>
+    <button type="submit" id="login-btn">Login</button>
 </form>
 
 <div id="error-message" style="color: red; display: none;"></div>
+<div id="status-message" style="color: #666; display: none;"></div>
 
 </div>
-<script src="script.js"></script>
+<script src="firebase-app-compat.js"></script>
+<script src="firebase-firestore-compat.js"></script>
+<script src="firebase.js"></script>
+<script src="script.js?v=2"></script>
 <script>
     document.getElementById('login-form').addEventListener('submit', function(e) {
         e.preventDefault();
-        const role = document.getElementById('role').value;
-        const phone = document.getElementById('phone').value;
+        const role     = document.getElementById('role').value;
+        const phone    = document.getElementById('phone').value.trim();
         const password = document.getElementById('password').value;
-        const errorMsg = document.getElementById('error-message');
+        const errorMsg  = document.getElementById('error-message');
+        const statusMsg = document.getElementById('status-message');
+        const loginBtn  = document.getElementById('login-btn');
 
-        // Simple authentication (mock)
-        let valid = false;
-        if (role === 'teacher' && phone === '0655491551' && password === 'teacher1') {
-            valid = true;
-        } else if (role === 'parent' && parentCredentials[phone] === password) {
-            valid = true;
+        errorMsg.style.display  = 'none';
+        statusMsg.style.display = 'none';
+        loginBtn.disabled = true;
+        statusMsg.textContent = 'Logging in...';
+        statusMsg.style.display = 'block';
+
+        function showError(msg) {
+            errorMsg.textContent = msg;
+            errorMsg.style.display = 'block';
+            statusMsg.style.display = 'none';
+            loginBtn.disabled = false;
         }
 
-        if (valid) {
-            localStorage.setItem('role', role);
-            if (role === 'parent') {
-                localStorage.setItem('student', parentStudents[phone]);
-            }
-            goTo(role === 'teacher' ? 'teacher-dashboard.html' : 'parent-dashboard.html');
+        if (role === 'teacher') {
+            db.collection('teachers').where('phone', '==', phone).get()
+                .then(function(snapshot) {
+                    if (snapshot.empty) { showError('Invalid credentials. Please try again.'); return; }
+                    const teacher = snapshot.docs[0].data();
+                    if (teacher.password !== password) { showError('Invalid credentials. Please try again.'); return; }
+                    localStorage.setItem('role', teacher.role === 'admin' ? 'admin' : 'teacher');
+                    localStorage.setItem('teacherPhone', phone);
+                    localStorage.setItem('teacherData', JSON.stringify(teacher));
+                    goTo('teacher-dashboard.html');
+                })
+                .catch(function(err) { showError('Error: ' + err.message); });
+
+        } else if (role === 'parent') {
+            db.collection('students').where('parentPhone', '==', phone).get()
+                .then(function(snapshot) {
+                    if (snapshot.empty) { showError('Invalid credentials. Please try again.'); return; }
+                    const student = snapshot.docs[0].data();
+                    if (student.parentPassword !== password) { showError('Invalid credentials. Please try again.'); return; }
+                    localStorage.setItem('role', 'parent');
+                    localStorage.setItem('student', student.name);
+                    localStorage.setItem('studentClass', student.form);
+                    localStorage.setItem('studentStream', student.stream || '');
+                    goTo('parent-dashboard.html');
+                })
+                .catch(function(err) { showError('Error: ' + err.message); });
+
         } else {
-            errorMsg.textContent = '❌ Invalid credentials. Please try again.';
-            errorMsg.style.display = 'block';
+            showError('Please select a role.');
         }
     });
 </script>

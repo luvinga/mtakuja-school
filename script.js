@@ -1,82 +1,181 @@
-// Navigation function
-function goTo(url) {
-    window.location.href = url;
-}
+// Navigation
+function goTo(url) { window.location.href = url; }
+function goBack() { window.history.back(); }
 
-function goBack() {
-    window.history.back();
-}
-
+// ─── Auth ─────────────────────────────────────────────────────────────────────
 function checkAuth() {
     const role = localStorage.getItem('role');
-    if (!role) {
-        goTo('index.html');
-    }
+    if (!role) goTo('index.html');
     return role;
 }
 
-// Parent to student mapping
-const parentStudents = {
-    '0714300300': 'Student 1',
-    '0714300301': 'Student 2',
-    '0714300302': 'Student 3',
-    '0714300303': 'Student 4',
-    '0714300304': 'Student 5'
+// ─── Teacher Access Helpers ───────────────────────────────────────────────────
+
+// Forms this teacher is involved with (teaching or class teacher)
+function getTeacherForms(teacher) {
+    if (!teacher || teacher.role === 'admin') return ['Form 1', 'Form 2', 'Form 3', 'Form 4'];
+    const forms = new Set(teacher.forms || []);
+    if (teacher.classTeacher) forms.add(teacher.classTeacher.form);
+    return [...forms].sort();
+}
+
+// Streams a teacher can access for a given Form 3/4
+function getAccessibleStreams(teacher, form) {
+    if (!teacher || teacher.role === 'admin') return ['Science', 'Business', 'Arts'];
+    const streams = new Set();
+    // Streams where teacher's subject is taught
+    if (teacher.subject && (teacher.forms || []).includes(form)) {
+        ['Science', 'Business', 'Arts'].forEach(s => {
+            if (streamSubjects[s] && streamSubjects[s].includes(teacher.subject)) streams.add(s);
+        });
+    }
+    // Stream where teacher is class teacher
+    if (teacher.classTeacher && teacher.classTeacher.form === form && teacher.classTeacher.stream) {
+        streams.add(teacher.classTeacher.stream);
+    }
+    return [...streams];
+}
+
+// Can this teacher take attendance for the current form/stream?
+function teacherCanAttend(teacher, form, stream) {
+    if (!teacher || teacher.role === 'admin') return true;
+    if (!teacher.classTeacher) return false;
+    return teacher.classTeacher.form === form &&
+           (teacher.classTeacher.stream || null) === (stream || null);
+}
+
+// Can this teacher enter grades for the current form/stream?
+function teacherCanGrade(teacher, form, stream) {
+    if (!teacher || teacher.role === 'admin') return true;
+    if (!teacher.subject || !(teacher.forms || []).includes(form)) return false;
+    if (hasStreams(form)) {
+        if (!stream) return false;
+        return !!(streamSubjects[stream] && streamSubjects[stream].includes(teacher.subject));
+    }
+    return !!(classSubjects[form] && classSubjects[form].includes(teacher.subject));
+}
+
+// ─── Firestore Helpers ────────────────────────────────────────────────────────
+
+// Load a teacher document from Firestore by phone number.
+// Returns a Promise that resolves to the teacher object (with phone included)
+// or null if not found.
+function loadTeacherFromFirestore(phone) {
+    return db.collection('teachers').where('phone', '==', phone).get()
+        .then(function(snapshot) {
+            if (snapshot.empty) return null;
+            return snapshot.docs[0].data();
+        });
+}
+
+// Load all students for a given form (and optionally stream) from Firestore.
+// Returns a Promise that resolves to an array of student objects.
+function loadStudentsForClass(form, stream) {
+    var query = db.collection('students').where('form', '==', form);
+    if (stream) {
+        query = query.where('stream', '==', stream);
+    } else {
+        query = query.where('stream', '==', null);
+    }
+    return query.get().then(function(snapshot) {
+        return snapshot.docs.map(function(doc) { return doc.data(); });
+    });
+}
+
+// ─── Subjects ─────────────────────────────────────────────────────────────────
+const classSubjects = {
+    'Form 1': ['Mathematics', 'English', 'Kiswahili', 'Biology', 'Chemistry', 'Physics', 'History', 'Geography', 'Civics', 'Agriculture', 'English Literature'],
+    'Form 2': ['Mathematics', 'English', 'Kiswahili', 'Biology', 'Chemistry', 'Physics', 'History', 'Geography', 'Civics', 'Agriculture', 'English Literature']
 };
 
-// Parent credentials
-const parentCredentials = {
-    '0714300300': 'parent1',
-    '0714300301': 'parent2',
-    '0714300302': 'parent3',
-    '0714300303': 'parent4',
-    '0714300304': 'parent5'
+const streamSubjects = {
+    'Science':  ['Mathematics', 'English', 'Kiswahili', 'Biology', 'Chemistry', 'Physics', 'History', 'Geography', 'Civics'],
+    'Business': ['Mathematics', 'English', 'Kiswahili', 'Biology', 'Book Keeping', 'Commerce', 'History', 'Geography', 'Civics'],
+    'Arts':     ['Mathematics', 'English', 'Kiswahili', 'Biology', 'History', 'Geography', 'Civics']
 };
 
-// Students list
-let students = ["Student 1", "Student 2", "Student 3", "Student 4", "Student 5"];
+const streamForms = ['Form 3', 'Form 4'];
+function hasStreams(cls) { return streamForms.includes(cls); }
+
+// ─── Selected Class/Stream ────────────────────────────────────────────────────
+function getSelectedClass()  { return localStorage.getItem('selectedClass'); }
+function getSelectedStream() { return localStorage.getItem('selectedStream'); }
+
+function getCurrentSubjects() {
+    const cls = getSelectedClass();
+    if (hasStreams(cls)) {
+        const stream = getSelectedStream();
+        return stream ? streamSubjects[stream] : [];
+    }
+    return classSubjects[cls] || [];
+}
+
+// ─── Attendance ───────────────────────────────────────────────────────────────
 let attendance = {};
 
-// Attendance functions
 function mark(student, status) {
     attendance[student] = status;
-    alert(student + " marked as " + status);
+    alert(student + ' marked as ' + status);
 }
 
 function saveAttendance() {
-    let date = new Date().toISOString().split('T')[0];
-    let record = { date, attendance: {...attendance} };
-    let records = JSON.parse(localStorage.getItem('attendanceRecords') || '[]');
-    records.push(record);
-    localStorage.setItem('attendanceRecords', JSON.stringify(records));
-    alert("Attendance Saved!");
-    attendance = {};
+    const date = new Date().toISOString().split('T')[0];
+    const cls = getSelectedClass();
+    const stream = getSelectedStream();
+    const record = {
+        date,
+        class: cls,
+        stream: stream || null,
+        attendance: {...attendance},
+        timestamp: new Date().toISOString()
+    };
+    db.collection('attendance').add(record)
+        .then(function() {
+            alert('Attendance Saved!');
+            attendance = {};
+        })
+        .catch(function(err) {
+            alert('Error saving attendance: ' + err.message);
+        });
 }
 
-// Grades function
+// ─── Grades ───────────────────────────────────────────────────────────────────
 let grades = {};
 
 function saveGrades() {
-    let inputs = document.querySelectorAll('#grades-list input');
-    students.forEach((student, index) => {
-        grades[student] = inputs[index].value;
-    });
-    let date = new Date().toISOString().split('T')[0];
-    let record = { date, grades: {...grades} };
-    let records = JSON.parse(localStorage.getItem('gradesRecords') || '[]');
-    records.push(record);
-    localStorage.setItem('gradesRecords', JSON.stringify(records));
-    alert("Grades Saved!");
-    grades = {};
+    const inputs = document.querySelectorAll('#grades-list input');
+    const studentNames = Array.from(document.querySelectorAll('#grades-list .student-name')).map(el => el.textContent);
+    studentNames.forEach((student, index) => { grades[student] = inputs[index].value; });
+    const date = new Date().toISOString().split('T')[0];
+    const cls = getSelectedClass();
+    const stream = getSelectedStream();
+    const subject = document.getElementById('subject-select') ? document.getElementById('subject-select').value : '';
+    const record = {
+        date,
+        class: cls,
+        stream: stream || null,
+        subject,
+        grades: {...grades},
+        timestamp: new Date().toISOString()
+    };
+    db.collection('grades').add(record)
+        .then(function() {
+            alert('Grades Saved!');
+            grades = {};
+        })
+        .catch(function(err) {
+            alert('Error saving grades: ' + err.message);
+        });
 }
 
-// View student profile
+// ─── Misc ─────────────────────────────────────────────────────────────────────
 function viewProfile(student) {
-    alert("Viewing profile of " + student + "\n\nDetails:\n- Name: " + student + "\n- Class: 10A\n- Roll No: " + (students.indexOf(student) + 1));
+    const cls = getSelectedClass();
+    const stream = getSelectedStream();
+    alert('Name: ' + student + '\nClass: ' + cls + (stream ? ' — ' + stream : ''));
 }
 
 function logout() {
-    localStorage.removeItem('role');
-    localStorage.removeItem('student');
+    ['role', 'teacherPhone', 'teacherData', 'student', 'selectedClass', 'selectedStream', 'studentClass', 'studentStream'].forEach(k => localStorage.removeItem(k));
     goTo('index.html');
 }

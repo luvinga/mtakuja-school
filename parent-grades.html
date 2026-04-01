@@ -8,38 +8,87 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        .grades-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .grades-table th { background: #4CAF50; color: white; padding: 8px; text-align: left; }
+        .grades-table td { padding: 8px; border-bottom: 1px solid #ddd; font-size: 14px; }
+        .grades-table tr:nth-child(even) { background: #f9f9f9; }
+        .no-grade { color: #aaa; font-style: italic; }
+    </style>
 </head>
 <body>
 <div class="app-container">
 
 <button class="back-btn" onclick="goBack()">← Back</button>
 
-<h2>Child Grades</h2>
+<h2 id="grades-title">📊 Grades Report</h2>
 
-<div id="grades-display"></div>
+<div id="grades-display"><p>Loading...</p></div>
 
 </div>
-<script src="script.js"></script>
+<script src="firebase-app-compat.js"></script>
+<script src="firebase-firestore-compat.js"></script>
+<script src="firebase.js?v=2"></script>
+<script src="script.js?v=2"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        if (checkAuth() !== 'parent') { goTo('index.html'); return; }
+
         const student = localStorage.getItem('student');
-        if (!student) {
-            goTo('index.html');
+        const cls     = localStorage.getItem('studentClass');
+        const stream  = localStorage.getItem('studentStream') || null;
+        const display = document.getElementById('grades-display');
+
+        const label = stream ? cls + ' — ' + stream : cls;
+        document.getElementById('grades-title').textContent = '📊 Grades — ' + student;
+
+        // Get subjects for this student's class/stream
+        let subjects = [];
+        if (stream) {
+            subjects = streamSubjects[stream] || [];
+        } else {
+            subjects = classSubjects[cls] || [];
+        }
+
+        if (subjects.length === 0) {
+            display.innerHTML = '<p>No subjects found for this class.</p>';
             return;
         }
-        let records = JSON.parse(localStorage.getItem('gradesRecords') || '[]');
-        let display = document.getElementById('grades-display');
-        if (records.length === 0) {
-            display.innerHTML = '<p>No grades records found.</p>';
-        } else {
-            let latest = records[records.length - 1];
-            display.innerHTML = `<h3>Latest Grades (${latest.date})</h3>`;
-            if (latest.grades[student]) {
-                display.innerHTML += `<p>${student}: ${latest.grades[student]}</p>`;
-            } else {
-                display.innerHTML += `<p>No record for ${student}</p>`;
-            }
-        }
+
+        db.collection('grades')
+            .where('class', '==', cls)
+            .where('stream', '==', stream)
+            .orderBy('date', 'asc')
+            .get()
+            .then(function(snapshot) {
+                // For each subject, find the latest grade for this student
+                const latestGrades = {};
+                snapshot.forEach(function(doc) {
+                    const record = doc.data();
+                    if (record.subject && record.grades && record.grades[student] !== undefined) {
+                        // Overwrite keeps the latest (records are ordered asc so last wins)
+                        latestGrades[record.subject] = { grade: record.grades[student], date: record.date };
+                    }
+                });
+
+                let html = '<p style="color:#666; font-size:13px;">Class: ' + label + '</p>';
+                html += '<table class="grades-table"><thead><tr><th>Subject</th><th>Grade</th><th>Date</th></tr></thead><tbody>';
+
+                subjects.forEach(function(subject) {
+                    const entry = latestGrades[subject];
+                    if (entry && entry.grade) {
+                        html += '<tr><td>' + subject + '</td><td><strong>' + entry.grade + '</strong></td><td>' + entry.date + '</td></tr>';
+                    } else {
+                        html += '<tr><td>' + subject + '</td><td class="no-grade">Not yet entered</td><td>—</td></tr>';
+                    }
+                });
+
+                html += '</tbody></table>';
+                display.innerHTML = html;
+            })
+            .catch(function(err) {
+                display.innerHTML = '<p style="color:red;">Error loading grades: ' + err.message + '</p>';
+            });
     });
 </script>
 <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("service-worker.js");}</script>

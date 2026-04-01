@@ -14,38 +14,67 @@
 
 <button class="back-btn" onclick="goBack()">← Back</button>
 
-<h2>Take Attendance</h2>
+<h2 id="attendance-title">Take Attendance</h2>
 
+<p id="loading-msg" style="text-align:center; color:#666;">Loading students...</p>
 <div id="attendance-list"></div>
 
-<br><br>
-<button onclick="saveAttendance()">Save & Submit</button>
+<br>
+<button id="save-btn" onclick="saveAttendance()" style="display:none;">Save &amp; Submit</button>
 
 </div>
-<script src="script.js"></script>
+<script src="firebase-app-compat.js"></script>
+<script src="firebase-firestore-compat.js"></script>
+<script src="firebase.js"></script>
+<script src="script.js?v=2"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        console.log('Loading students:', students);
-        let list = document.getElementById('attendance-list');
-        if (typeof students !== 'undefined') {
-            students.forEach(student => {
-                let div = document.createElement('div');
-                div.className = 'student-row';
-                let nameSpan = document.createElement('span');
-                nameSpan.textContent = student;
-                let presentBtn = document.createElement('button');
-                presentBtn.textContent = '✅ Present';
-                presentBtn.onclick = () => mark(student, 'Present');
-                let absentBtn = document.createElement('button');
-                absentBtn.textContent = '❌ Absent';
-                absentBtn.onclick = () => mark(student, 'Absent');
-                div.appendChild(nameSpan);
-                div.appendChild(presentBtn);
-                div.appendChild(absentBtn);
-                list.appendChild(div);
+        const cls = getSelectedClass();
+        if (!cls) { goTo('teacher-dashboard.html'); return; }
+        const stream = getSelectedStream();
+        const label = stream ? cls + ' (' + stream + ')' : cls;
+        document.getElementById('attendance-title').textContent = 'Attendance — ' + label;
+
+        loadStudentsForClass(cls, stream || null)
+            .then(function(students) {
+                document.getElementById('loading-msg').style.display = 'none';
+                document.getElementById('save-btn').style.display = 'block';
+
+                if (students.length === 0) {
+                    document.getElementById('loading-msg').textContent = 'No students found for this class.';
+                    document.getElementById('loading-msg').style.display = 'block';
+                    return;
+                }
+
+                // Sort students alphabetically by name
+                students.sort(function(a, b) { return a.name.localeCompare(b.name); });
+
+                const list = document.getElementById('attendance-list');
+                students.forEach(function(student) {
+                    const div = document.createElement('div');
+                    div.className = 'student-row';
+
+                    const nameSpan = document.createElement('span');
+                    nameSpan.className = 'student-name';
+                    nameSpan.textContent = student.name;
+
+                    const presentBtn = document.createElement('button');
+                    presentBtn.textContent = '✅ Present';
+                    presentBtn.onclick = function() { mark(student.name, 'Present'); };
+
+                    const absentBtn = document.createElement('button');
+                    absentBtn.textContent = '❌ Absent';
+                    absentBtn.onclick = function() { mark(student.name, 'Absent'); };
+
+                    div.appendChild(nameSpan);
+                    div.appendChild(presentBtn);
+                    div.appendChild(absentBtn);
+                    list.appendChild(div);
+                });
+            })
+            .catch(function(err) {
+                document.getElementById('loading-msg').textContent = 'Error loading students: ' + err.message;
             });
-        }
-        console.log('Attendance UI loaded');
     });
 </script>
 <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("service-worker.js");}</script>

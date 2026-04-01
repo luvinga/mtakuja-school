@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Class Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4CAF50">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<div class="app-container">
+
+<button class="back-btn" onclick="goTo('teacher-dashboard.html')">← Back</button>
+
+<!-- Stream selection (Form 3 & 4 only) -->
+<div id="stream-section" style="display:none;">
+    <h2 id="stream-title"></h2>
+    <p style="text-align:center; color:#666;">Select a stream</p>
+    <div id="stream-buttons"></div>
+</div>
+
+<!-- Actions -->
+<div id="actions-section" style="display:none;">
+    <h2 id="class-title"></h2>
+    <p style="text-align:center; color:#666;">What would you like to do?</p>
+    <div id="action-buttons"></div>
+</div>
+
+<p id="loading-msg" style="text-align:center; color:#666;">Loading...</p>
+
+</div>
+<script src="firebase-app-compat.js"></script>
+<script src="firebase-firestore-compat.js"></script>
+<script src="firebase.js"></script>
+<script src="script.js?v=2"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const role = checkAuth();
+        if (role !== 'teacher' && role !== 'admin') { goTo('index.html'); return; }
+
+        const cls = getSelectedClass();
+        if (!cls) { goTo('teacher-dashboard.html'); return; }
+
+        const phone = localStorage.getItem('teacherPhone');
+
+        function initWithTeacher(teacher) {
+            document.getElementById('loading-msg').style.display = 'none';
+            if (hasStreams(cls)) {
+                const stream = getSelectedStream();
+                if (!stream) {
+                    showStreamSelection(teacher, cls);
+                } else {
+                    showActions(teacher, cls, stream);
+                }
+            } else {
+                showActions(teacher, cls, null);
+            }
+        }
+
+        // Use cached teacher data for speed, refresh in background
+        let teacher = null;
+        try { teacher = JSON.parse(localStorage.getItem('teacherData')); } catch(e) {}
+
+        if (teacher) {
+            initWithTeacher(teacher);
+        }
+
+        loadTeacherFromFirestore(phone)
+            .then(function(freshTeacher) {
+                if (!freshTeacher) { goTo('index.html'); return; }
+                localStorage.setItem('teacherData', JSON.stringify(freshTeacher));
+                if (!teacher) {
+                    initWithTeacher(freshTeacher);
+                }
+            })
+            .catch(function(err) {
+                if (!teacher) {
+                    document.getElementById('loading-msg').textContent = 'Error loading teacher data: ' + err.message;
+                }
+            });
+    });
+
+    function showStreamSelection(teacher, cls) {
+        const streams = getAccessibleStreams(teacher, cls);
+        if (streams.length === 0) {
+            alert('You do not have access to any stream in ' + cls);
+            goTo('teacher-dashboard.html');
+            return;
+        }
+        document.getElementById('stream-title').textContent = '📚 ' + cls;
+        document.getElementById('stream-section').style.display = 'block';
+
+        const icons = { Science: '🔬', Business: '💼', Arts: '🎨' };
+        const container = document.getElementById('stream-buttons');
+        container.innerHTML = '';
+        streams.forEach(function(stream) {
+            const btn = document.createElement('button');
+            btn.textContent = (icons[stream] || '') + ' ' + stream;
+            btn.onclick = function() {
+                localStorage.setItem('selectedStream', stream);
+                document.getElementById('stream-section').style.display = 'none';
+                showActions(teacher, cls, stream);
+            };
+            container.appendChild(btn);
+        });
+    }
+
+    function showActions(teacher, cls, stream) {
+        document.getElementById('stream-section').style.display = 'none';
+        document.getElementById('actions-section').style.display = 'block';
+
+        const label = stream ? cls + ' — ' + stream : cls;
+        document.getElementById('class-title').textContent = '📚 ' + label;
+
+        const container = document.getElementById('action-buttons');
+        container.innerHTML = '';
+
+        const canAttend = teacherCanAttend(teacher, cls, stream);
+        const canGrade  = teacherCanGrade(teacher, cls, stream);
+
+        if (canAttend) {
+            addActionBtn(container, '✅ Take Attendance', 'attendance.html');
+        }
+        if (canGrade) {
+            addActionBtn(container, '📝 Enter Grades', 'grades.html');
+        }
+        addActionBtn(container, '👥 View Students', 'students.html');
+        addActionBtn(container, '📋 Attendance Records', 'attendance-records.html');
+        addActionBtn(container, '📊 Grades Records', 'grades-records.html');
+    }
+
+    function addActionBtn(container, label, url) {
+        const btn = document.createElement('button');
+        btn.textContent = label;
+        btn.onclick = function() { goTo(url); };
+        container.appendChild(btn);
+    }
+</script>
+<script>if("serviceWorker" in navigator){navigator.serviceWorker.register("service-worker.js");}</script>
+</body>
+</html>

@@ -12,24 +12,85 @@
 <body>
 <div class="app-container">
 
-<button class="back-btn" onclick="goBack()">← Back</button>
+<h2 id="dashboard-title">👨‍🏫 Dashboard</h2>
+<p id="dashboard-sub" style="text-align:center; color:#666;">Loading...</p>
 
-<h2>👨‍🏫 Teacher Dashboard - Welcome, Teacher 👋</h2>
+<div id="form-buttons"></div>
 
-<button onclick="goTo('attendance.html')">Take Attendance</button>
-<button onclick="goTo('grades.html')">Enter Grades</button>
-<button onclick="goTo('students.html')">View Students</button>
-
-<button onclick="logout()" style="background: #f44336;">Logout</button>
+<button onclick="logout()" style="background:#f44336; margin-top:20px;">Logout</button>
 
 </div>
-<script src="script.js"></script>
+<script src="firebase-app-compat.js"></script>
+<script src="firebase-firestore-compat.js"></script>
+<script src="firebase.js"></script>
+<script src="script.js?v=2"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        if (checkAuth() !== 'teacher') {
-            // Redirect if not teacher
+        const role = checkAuth();
+        if (role !== 'teacher' && role !== 'admin') { goTo('index.html'); return; }
+
+        const phone = localStorage.getItem('teacherPhone');
+        if (!phone) { goTo('index.html'); return; }
+
+        // Try cached data first for instant display, then confirm from Firestore
+        let cachedTeacher = null;
+        try { cachedTeacher = JSON.parse(localStorage.getItem('teacherData')); } catch(e) {}
+
+        if (cachedTeacher) {
+            renderDashboard(cachedTeacher);
         }
+
+        // Always refresh from Firestore to stay up-to-date
+        loadTeacherFromFirestore(phone)
+            .then(function(teacher) {
+                if (!teacher) { goTo('index.html'); return; }
+                localStorage.setItem('teacherData', JSON.stringify(teacher));
+                renderDashboard(teacher);
+            })
+            .catch(function(err) {
+                if (!cachedTeacher) {
+                    document.getElementById('dashboard-sub').textContent = 'Error loading data: ' + err.message;
+                }
+            });
     });
+
+    function renderDashboard(teacher) {
+        document.getElementById('dashboard-title').textContent = '👨‍🏫 Welcome, ' + teacher.name;
+
+        if (teacher.role === 'admin') {
+            document.getElementById('dashboard-sub').textContent = 'Admin — full access';
+        } else if (teacher.subject) {
+            document.getElementById('dashboard-sub').textContent = 'Subject: ' + teacher.subject;
+        } else {
+            document.getElementById('dashboard-sub').textContent = '';
+        }
+
+        const forms = getTeacherForms(teacher);
+        const container = document.getElementById('form-buttons');
+        container.innerHTML = '';
+
+        forms.forEach(function(form) {
+            const btn = document.createElement('button');
+            btn.textContent = '📚 ' + form;
+            btn.onclick = function() { selectForm(form); };
+            container.appendChild(btn);
+        });
+
+        // Show admin panel link for admin users
+        if (teacher.role === 'admin') {
+            const adminBtn = document.createElement('button');
+            adminBtn.textContent = '⚙️ Admin Panel';
+            adminBtn.style.background = '#9C27B0';
+            adminBtn.onclick = function() { goTo('admin.html'); };
+            container.appendChild(adminBtn);
+        }
+    }
+
+    function selectForm(form) {
+        localStorage.setItem('selectedClass', form);
+        localStorage.removeItem('selectedStream');
+        goTo('class-dashboard.html');
+    }
 </script>
 <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("service-worker.js");}</script>
 </body>
