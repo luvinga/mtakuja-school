@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Enter Grades</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4CAF50">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<div class="app-container">
+
+<button class="back-btn" onclick="goBack()">← Back</button>
+
+<h2>Enter Grades</h2>
+
+<label for="class-select">Select Class:</label>
+<select id="class-select">
+    <option value="10A">10A</option>
+    <option value="10B">10B</option>
+</select>
+
+<label for="subject-select">Select Subject:</label>
+<select id="subject-select">
+    <option value="Math">Math</option>
+    <option value="English">English</option>
+    <option value="Science">Science</option>
+</select>
+
+<div id="grades-list"></div>
+
+<br>
+<button onclick="saveGrades()">Save Grades</button>
+
+</div>
+<script src="script.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        let list = document.getElementById('grades-list');
+        // Assuming students is defined in script.js
+        if (typeof students !== 'undefined') {
+            students.forEach(student => {
+                let p = document.createElement('p');
+                p.textContent = student + ' ';
+                let input = document.createElement('input');
+                input.type = 'text';
+                input.placeholder = 'Enter Grade';
+                p.appendChild(input);
+                list.appendChild(p);
+            });
+        }
+    });
+</script>
+<script>if("serviceWorker" in navigator){navigator.serviceWorker.register("service-worker.js");}</script>
+</body>
+</html>

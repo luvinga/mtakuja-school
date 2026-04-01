@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Take Attendance</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4CAF50">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<div class="app-container">
+
+<button class="back-btn" onclick="goBack()">← Back</button>
+
+<h2>Take Attendance</h2>
+
+<div id="attendance-list"></div>
+
+<br><br>
+<button onclick="saveAttendance()">Save & Submit</button>
+
+</div>
+<script src="script.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Loading students:', students);
+        let list = document.getElementById('attendance-list');
+        if (typeof students !== 'undefined') {
+            students.forEach(student => {
+                let div = document.createElement('div');
+                div.className = 'student-row';
+                let nameSpan = document.createElement('span');
+                nameSpan.textContent = student;
+                let presentBtn = document.createElement('button');
+                presentBtn.textContent = '✅ Present';
+                presentBtn.onclick = () => mark(student, 'Present');
+                let absentBtn = document.createElement('button');
+                absentBtn.textContent = '❌ Absent';
+                absentBtn.onclick = () => mark(student, 'Absent');
+                div.appendChild(nameSpan);
+                div.appendChild(presentBtn);
+                div.appendChild(absentBtn);
+                list.appendChild(div);
+            });
+        }
+        console.log('Attendance UI loaded');
+    });
+</script>
+<script>if("serviceWorker" in navigator){navigator.serviceWorker.register("service-worker.js");}</script>
+</body>
+</html>

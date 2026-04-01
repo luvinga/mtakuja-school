@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Child Grades</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4CAF50">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<div class="app-container">
+
+<button class="back-btn" onclick="goBack()">← Back</button>
+
+<h2>Child Grades</h2>
+
+<div id="grades-display"></div>
+
+</div>
+<script src="script.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const student = localStorage.getItem('student');
+        if (!student) {
+            goTo('index.html');
+            return;
+        }
+        let records = JSON.parse(localStorage.getItem('gradesRecords') || '[]');
+        let display = document.getElementById('grades-display');
+        if (records.length === 0) {
+            display.innerHTML = '<p>No grades records found.</p>';
+        } else {
+            let latest = records[records.length - 1];
+            display.innerHTML = `<h3>Latest Grades (${latest.date})</h3>`;
+            if (latest.grades[student]) {
+                display.innerHTML += `<p>${student}: ${latest.grades[student]}</p>`;
+            } else {
+                display.innerHTML += `<p>No record for ${student}</p>`;
+            }
+        }
+    });
+</script>
+<script>if("serviceWorker" in navigator){navigator.serviceWorker.register("service-worker.js");}</script>
+</body>
+</html>

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Attendance Records</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4CAF50">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<div class="app-container">
+
+<button class="back-btn" onclick="goBack()">← Back</button>
+
+<h2>Attendance Records</h2>
+
+<div id="records-list"></div>
+
+</div>
+<script src="script.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        let records = JSON.parse(localStorage.getItem('attendanceRecords') || '[]');
+        let list = document.getElementById('records-list');
+        if (records.length === 0) {
+            list.innerHTML = '<p>No records found.</p>';
+        } else {
+            records.forEach(record => {
+                let div = document.createElement('div');
+                div.innerHTML = `<h3>${record.date}</h3>`;
+                for (let student in record.attendance) {
+                    div.innerHTML += `<p>${student}: ${record.attendance[student]}</p>`;
+                }
+                list.appendChild(div);
+            });
+        }
+    });
+</script>
+<script>if("serviceWorker" in navigator){navigator.serviceWorker.register("service-worker.js");}</script>
+</body>
+</html>

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mtakuja Beach Sec School</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4CAF50">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<div class="app-container">
+
+<img src="mtakuja.png" alt="Mtakuja Beach Sec School Logo" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; display: block; margin: 0 auto 20px;">
+
+<h1>Mtakuja Beach Sec School</h1>
+<h2>Login Screen</h2>
+
+<form id="login-form">
+    <label for="role">Login as:</label>
+    <select id="role" required>
+        <option value="">Select Role</option>
+        <option value="teacher">Teacher</option>
+        <option value="parent">Parent</option>
+    </select>
+
+    <label for="phone">Phone Number:</label>
+    <input type="tel" id="phone" placeholder="Enter Phone Number" required>
+
+    <label for="password">Password:</label>
+    <input type="password" id="password" placeholder="Enter Password" required>
+
+    <button type="submit">Login</button>
+</form>
+
+<div id="error-message" style="color: red; display: none;"></div>
+
+</div>
+<script src="script.js"></script>
+<script>
+    document.getElementById('login-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const role = document.getElementById('role').value;
+        const phone = document.getElementById('phone').value;
+        const password = document.getElementById('password').value;
+        const errorMsg = document.getElementById('error-message');
+
+        // Simple authentication (mock)
+        let valid = false;
+        if (role === 'teacher' && phone === '0655491551' && password === 'teacher1') {
+            valid = true;
+        } else if (role === 'parent' && parentCredentials[phone] === password) {
+            valid = true;
+        }
+
+        if (valid) {
+            localStorage.setItem('role', role);
+            if (role === 'parent') {
+                localStorage.setItem('student', parentStudents[phone]);
+            }
+            goTo(role === 'teacher' ? 'teacher-dashboard.html' : 'parent-dashboard.html');
+        } else {
+            errorMsg.textContent = '❌ Invalid credentials. Please try again.';
+            errorMsg.style.display = 'block';
+        }
+    });
+</script>
+<script>if("serviceWorker" in navigator){navigator.serviceWorker.register("service-worker.js");}</script>
+</body>
+</html>
