@@ -290,12 +290,35 @@ label {
 }
 
 /* ── Tables ─────────────────────────────────────────────── */
-table { width: 100%; border-collapse: collapse; }
+
+/* Wrap ALL tables in a scrollable container on mobile */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 320px; /* prevents collapse too narrow */
+}
+
+/* Scrollable wrapper — applied via JS or wrap tables in this class */
+.table-scroll {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 8px;
+    margin-bottom: 12px;
+}
+
+/* On mobile make table text smaller and cells tighter */
+@media (max-width: 599px) {
+    table { font-size: 11px; }
+    th, td { padding: 5px 4px; }
+    th:first-child, td:first-child { padding-left: 6px; }
+}
 
 th {
     background: linear-gradient(135deg, #1b5e20, #2e7d32);
     color: #ffffff;
     padding: 8px 6px;
+    white-space: nowrap;
 }
 
 tr:nth-child(even) { background: #f1f8e9; }

@@ -232,6 +232,30 @@ function logout() {
     goTo('index.html');
 }
 
+// ─── Auto-wrap tables for mobile scroll ──────────────────────────────────────
+function wrapTables() {
+    document.querySelectorAll('table').forEach(function(table) {
+        if (table.parentNode.classList.contains('table-scroll')) return;
+        var wrapper = document.createElement('div');
+        wrapper.className = 'table-scroll';
+        table.parentNode.insertBefore(wrapper, table);
+        wrapper.appendChild(table);
+    });
+}
+document.addEventListener('DOMContentLoaded', wrapTables);
+
+// Also wrap tables added dynamically (grades, results etc.)
+var _origInnerHTML = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML');
+// Use MutationObserver to catch dynamically inserted tables
+var _tableObserver = new MutationObserver(function(mutations) {
+    mutations.forEach(function(m) {
+        if (m.addedNodes.length) wrapTables();
+    });
+});
+document.addEventListener('DOMContentLoaded', function() {
+    _tableObserver.observe(document.body, { childList: true, subtree: true });
+});
+
 // ─── Dark Mode ────────────────────────────────────────────────────────────────
 function initDarkMode() {
     if (localStorage.getItem('darkMode') === 'on') {
