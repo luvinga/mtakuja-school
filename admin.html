@@ -102,6 +102,36 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
+        .search-bar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+        .search-bar input {
+            flex: 1;
+            min-width: 160px;
+            padding: 8px 12px;
+            border-radius: 10px;
+            border: 2px solid #c8e6c9;
+            font-size: 14px;
+            background: #f9fbe7;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .search-bar input:focus { border-color: #43a047; }
+        .search-bar select {
+            padding: 8px 10px;
+            border-radius: 10px;
+            border: 2px solid #c8e6c9;
+            font-size: 14px;
+            background: #f9fbe7;
+        }
+        .search-count {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 6px;
+        }
     </style>
 </head>
 <body>
@@ -165,6 +195,10 @@
 
     <!-- Teachers List -->
     <h4 style="margin-top:20px;">All Teachers</h4>
+    <div class="search-bar">
+        <input type="text" id="teacher-search" placeholder="🔍 Search by name or subject..." oninput="filterTeachers()">
+    </div>
+    <div class="search-count" id="teacher-count"></div>
     <div id="teachers-list"><em style="color:#999;">Loading...</em></div>
 </div>
 
@@ -205,6 +239,23 @@
 
     <!-- Students List -->
     <h4 style="margin-top:20px;">All Students</h4>
+    <div class="search-bar">
+        <input type="text" id="student-search" placeholder="🔍 Search by name..." oninput="filterStudents()">
+        <select id="student-filter-form" onchange="filterStudents()">
+            <option value="">All Forms</option>
+            <option value="Form 1">Form 1</option>
+            <option value="Form 2">Form 2</option>
+            <option value="Form 3">Form 3</option>
+            <option value="Form 4">Form 4</option>
+        </select>
+        <select id="student-filter-stream" onchange="filterStudents()">
+            <option value="">All Streams</option>
+            <option value="Science">Science</option>
+            <option value="Business">Business</option>
+            <option value="Arts">Arts</option>
+        </select>
+    </div>
+    <div class="search-count" id="student-count"></div>
     <div id="students-list"><em style="color:#999;">Loading...</em></div>
 </div>
 
@@ -321,55 +372,86 @@
             });
     }
 
+    // ── In-memory cache for filtering ──────────────────────────────────────────
+    var allTeacherDocs = [];
+    var allStudentDocs = [];
+
     // ── Load & Render Teachers ──────────────────────────────────────────────────
     function loadTeachersList() {
         const container = document.getElementById('teachers-list');
         container.innerHTML = '<em style="color:#999;">Loading...</em>';
         db.collection('teachers').orderBy('name').get()
             .then(function(snapshot) {
-                container.innerHTML = '';
-                if (snapshot.empty) {
-                    container.innerHTML = '<em style="color:#999;">No teachers found.</em>';
-                    return;
-                }
-                snapshot.forEach(function(docSnap) {
-                    const t = docSnap.data();
-                    const item = document.createElement('div');
-                    item.className = 'list-item';
-
-                    const info = document.createElement('div');
-                    info.className = 'item-info';
-                    const strong = document.createElement('strong');
-                    strong.textContent = t.name + (t.role === 'admin' ? ' (Admin)' : '');
-                    const small = document.createElement('small');
-                    small.textContent = t.phone + (t.subject ? ' — ' + t.subject : '') +
-                        (t.classTeacher ? ' | Class: ' + t.classTeacher.form + (t.classTeacher.stream ? ' ' + t.classTeacher.stream : '') : '');
-                    info.appendChild(strong);
-                    info.appendChild(small);
-
-                    const btnGroup = document.createElement('div');
-                    btnGroup.className = 'btn-group';
-
-                    const resetBtn = document.createElement('button');
-                    resetBtn.className = 'reset-btn';
-                    resetBtn.textContent = 'Reset Password';
-                    resetBtn.onclick = function() { resetTeacherPassword(t.phone, t.name); };
-
-                    const delBtn = document.createElement('button');
-                    delBtn.className = 'delete-btn';
-                    delBtn.textContent = 'Delete';
-                    delBtn.onclick = function() { deleteTeacher(t.phone, t.name); };
-
-                    btnGroup.appendChild(resetBtn);
-                    btnGroup.appendChild(delBtn);
-                    item.appendChild(info);
-                    item.appendChild(btnGroup);
-                    container.appendChild(item);
-                });
+                allTeacherDocs = [];
+                snapshot.forEach(function(docSnap) { allTeacherDocs.push(docSnap); });
+                filterTeachers();
             })
             .catch(function(err) {
                 container.innerHTML = '<em style="color:red;">Error: ' + err.message + '</em>';
             });
+    }
+
+    function filterTeachers() {
+        const query = (document.getElementById('teacher-search').value || '').toLowerCase().trim();
+        const container = document.getElementById('teachers-list');
+        container.innerHTML = '';
+
+        if (allTeacherDocs.length === 0) {
+            container.innerHTML = '<em style="color:#999;">No teachers found.</em>';
+            document.getElementById('teacher-count').textContent = '';
+            return;
+        }
+
+        const filtered = allTeacherDocs.filter(function(docSnap) {
+            const t = docSnap.data();
+            if (!query) return true;
+            return (t.name || '').toLowerCase().includes(query) ||
+                   (t.subject || '').toLowerCase().includes(query) ||
+                   (t.phone || '').includes(query);
+        });
+
+        document.getElementById('teacher-count').textContent =
+            filtered.length + ' of ' + allTeacherDocs.length + ' teachers';
+
+        if (filtered.length === 0) {
+            container.innerHTML = '<em style="color:#999;">No teachers match your search.</em>';
+            return;
+        }
+
+        filtered.forEach(function(docSnap) {
+            const t = docSnap.data();
+            const item = document.createElement('div');
+            item.className = 'list-item';
+
+            const info = document.createElement('div');
+            info.className = 'item-info';
+            const strong = document.createElement('strong');
+            strong.textContent = t.name + (t.role === 'admin' ? ' (Admin)' : '');
+            const small = document.createElement('small');
+            small.textContent = t.phone + (t.subject ? ' — ' + t.subject : '') +
+                (t.classTeacher ? ' | Class: ' + t.classTeacher.form + (t.classTeacher.stream ? ' ' + t.classTeacher.stream : '') : '');
+            info.appendChild(strong);
+            info.appendChild(small);
+
+            const btnGroup = document.createElement('div');
+            btnGroup.className = 'btn-group';
+
+            const resetBtn = document.createElement('button');
+            resetBtn.className = 'reset-btn';
+            resetBtn.textContent = 'Reset Password';
+            resetBtn.onclick = function() { resetTeacherPassword(t.phone, t.name); };
+
+            const delBtn = document.createElement('button');
+            delBtn.className = 'delete-btn';
+            delBtn.textContent = 'Delete';
+            delBtn.onclick = function() { deleteTeacher(t.phone, t.name); };
+
+            btnGroup.appendChild(resetBtn);
+            btnGroup.appendChild(delBtn);
+            item.appendChild(info);
+            item.appendChild(btnGroup);
+            container.appendChild(item);
+        });
     }
 
     // ── Load & Render Students ──────────────────────────────────────────────────
@@ -378,78 +460,105 @@
         container.innerHTML = '<em style="color:#999;">Loading...</em>';
         db.collection('students').orderBy('form').get()
             .then(function(snapshot) {
-                container.innerHTML = '';
-                if (snapshot.empty) {
-                    container.innerHTML = '<em style="color:#999;">No students found.</em>';
-                    return;
-                }
-
-                // Group by form + stream
-                const groups = {};
-                snapshot.forEach(function(docSnap) {
-                    const s = docSnap;
-                    const data = docSnap.data();
-                    const groupKey = data.form + (data.stream ? ' — ' + data.stream : '');
-                    if (!groups[groupKey]) groups[groupKey] = [];
-                    groups[groupKey].push(docSnap);
-                });
-
-                Object.keys(groups).sort().forEach(function(groupKey) {
-                    const header = document.createElement('div');
-                    header.className = 'group-header';
-                    header.textContent = groupKey;
-                    container.appendChild(header);
-
-                    groups[groupKey].sort(function(a, b) { return a.data().name.localeCompare(b.data().name); });
-                    groups[groupKey].forEach(function(docSnap) {
-                        const s = docSnap.data ? docSnap.data() : docSnap;
-                        const docId = docSnap.id || s.parentPhone;
-                        const item = document.createElement('div');
-                        item.className = 'list-item';
-
-                        const info = document.createElement('div');
-                        info.className = 'item-info';
-                        const strong = document.createElement('strong');
-                        strong.textContent = s.name;
-                        const small = document.createElement('small');
-                        small.textContent = s.parentPhone ? 'Parent: ' + s.parentPhone : '⚠️ No parent assigned';
-                        small.style.color = s.parentPhone ? '#888' : '#e65100';
-                        info.appendChild(strong);
-                        info.appendChild(small);
-
-                        const sBtnGroup = document.createElement('div');
-                        sBtnGroup.className = 'btn-group';
-
-                        if (!s.parentPhone) {
-                            const assignBtn = document.createElement('button');
-                            assignBtn.className = 'reset-btn';
-                            assignBtn.textContent = 'Set Parent';
-                            assignBtn.style.background = '#2196F3';
-                            assignBtn.onclick = function() { assignParent(docId, s.name); };
-                            sBtnGroup.appendChild(assignBtn);
-                        } else {
-                            const sResetBtn = document.createElement('button');
-                            sResetBtn.className = 'reset-btn';
-                            sResetBtn.textContent = 'Reset';
-                            sResetBtn.onclick = function() { resetStudentPassword(docId, s.name); };
-                            sBtnGroup.appendChild(sResetBtn);
-                        }
-
-                        const delBtn = document.createElement('button');
-                        delBtn.className = 'delete-btn';
-                        delBtn.textContent = 'Delete';
-                        delBtn.onclick = function() { deleteStudent(docId, s.name); };
-
-                        sBtnGroup.appendChild(delBtn);
-                        item.appendChild(info);
-                        item.appendChild(sBtnGroup);
-                        container.appendChild(item);
-                    });
-                });
+                allStudentDocs = [];
+                snapshot.forEach(function(docSnap) { allStudentDocs.push(docSnap); });
+                filterStudents();
             })
             .catch(function(err) {
                 container.innerHTML = '<em style="color:red;">Error: ' + err.message + '</em>';
             });
+    }
+
+    function filterStudents() {
+        const query      = (document.getElementById('student-search').value || '').toLowerCase().trim();
+        const formFilter = document.getElementById('student-filter-form').value;
+        const streamFilter = document.getElementById('student-filter-stream').value;
+        const container = document.getElementById('students-list');
+        container.innerHTML = '';
+
+        if (allStudentDocs.length === 0) {
+            container.innerHTML = '<em style="color:#999;">No students found.</em>';
+            document.getElementById('student-count').textContent = '';
+            return;
+        }
+
+        const filtered = allStudentDocs.filter(function(docSnap) {
+            const s = docSnap.data();
+            if (formFilter && s.form !== formFilter) return false;
+            if (streamFilter && s.stream !== streamFilter) return false;
+            if (query && !(s.name || '').toLowerCase().includes(query)) return false;
+            return true;
+        });
+
+        document.getElementById('student-count').textContent =
+            filtered.length + ' of ' + allStudentDocs.length + ' students';
+
+        if (filtered.length === 0) {
+            container.innerHTML = '<em style="color:#999;">No students match your search.</em>';
+            return;
+        }
+
+        // Group by form + stream
+        const groups = {};
+        filtered.forEach(function(docSnap) {
+            const data = docSnap.data();
+            const groupKey = data.form + (data.stream ? ' — ' + data.stream : '');
+            if (!groups[groupKey]) groups[groupKey] = [];
+            groups[groupKey].push(docSnap);
+        });
+
+        Object.keys(groups).sort().forEach(function(groupKey) {
+            const header = document.createElement('div');
+            header.className = 'group-header';
+            header.textContent = groupKey;
+            container.appendChild(header);
+
+            groups[groupKey].sort(function(a, b) { return a.data().name.localeCompare(b.data().name); });
+            groups[groupKey].forEach(function(docSnap) {
+                const s = docSnap.data();
+                const docId = docSnap.id || s.parentPhone;
+                const item = document.createElement('div');
+                item.className = 'list-item';
+
+                const info = document.createElement('div');
+                info.className = 'item-info';
+                const strong = document.createElement('strong');
+                strong.textContent = s.name;
+                const small = document.createElement('small');
+                small.textContent = s.parentPhone ? 'Parent: ' + s.parentPhone : '⚠️ No parent assigned';
+                small.style.color = s.parentPhone ? '#888' : '#e65100';
+                info.appendChild(strong);
+                info.appendChild(small);
+
+                const sBtnGroup = document.createElement('div');
+                sBtnGroup.className = 'btn-group';
+
+                if (!s.parentPhone) {
+                    const assignBtn = document.createElement('button');
+                    assignBtn.className = 'reset-btn';
+                    assignBtn.textContent = 'Set Parent';
+                    assignBtn.style.background = '#2196F3';
+                    assignBtn.onclick = function() { assignParent(docId, s.name); };
+                    sBtnGroup.appendChild(assignBtn);
+                } else {
+                    const sResetBtn = document.createElement('button');
+                    sResetBtn.className = 'reset-btn';
+                    sResetBtn.textContent = 'Reset';
+                    sResetBtn.onclick = function() { resetStudentPassword(docId, s.name); };
+                    sBtnGroup.appendChild(sResetBtn);
+                }
+
+                const delBtn = document.createElement('button');
+                delBtn.className = 'delete-btn';
+                delBtn.textContent = 'Delete';
+                delBtn.onclick = function() { deleteStudent(docId, s.name); };
+
+                sBtnGroup.appendChild(delBtn);
+                item.appendChild(info);
+                item.appendChild(sBtnGroup);
+                container.appendChild(item);
+            });
+        });
     }
 
     // ── Delete Teacher ──────────────────────────────────────────────────────────
