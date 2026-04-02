@@ -11,27 +11,62 @@
     <style>
         /* ── Letterhead ── */
         .letterhead {
-            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
             padding-bottom: 10px;
+            gap: 8px;
         }
-        .letterhead img {
-            width: 70px;
-            height: 70px;
+        .letterhead-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+        }
+        .letterhead-left img {
+            width: 64px;
+            height: 64px;
             border-radius: 50%;
             object-fit: cover;
             border: 2px solid #4CAF50;
-            display: block;
-            margin: 0 auto 6px;
+            flex-shrink: 0;
+        }
+        .letterhead-center {
+            flex: 2;
+            text-align: center;
+        }
+        .letterhead-right {
+            flex: 1;
+            display: flex;
+            justify-content: flex-end;
+        }
+        .letterhead-right img {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #43a047;
+        }
+        .letterhead-right .no-photo {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: #e8f5e9;
+            border: 2px dashed #a5d6a7;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
         }
         .letterhead h2 {
             margin: 0 0 2px;
-            font-size: 16px;
+            font-size: 15px;
             color: #1b5e20;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
         .letterhead .school-address {
-            font-size: 11px;
+            font-size: 10px;
             color: #555;
             line-height: 1.6;
             margin: 0;
@@ -177,13 +212,19 @@
 
 <!-- Letterhead -->
 <div class="letterhead">
-    <img src="mtakuja.png" alt="School Logo">
-    <div id="student-photo-slot"></div>
-    <h2>Mtakuja Beach Secondary School</h2>
-    <p class="school-address">
-        Kunduchi Beach, Kinondoni Municipality, Dar es Salaam, Tanzania<br>
-        P.O. Box 66500, Dar es Salaam &nbsp;|&nbsp; Tel: +255 654 995 533
-    </p>
+    <div class="letterhead-left">
+        <img src="mtakuja.png" alt="School Logo">
+    </div>
+    <div class="letterhead-center">
+        <h2>Mtakuja Beach Secondary School</h2>
+        <p class="school-address">
+            Kunduchi Beach, Kinondoni Municipality, Dar es Salaam, Tanzania<br>
+            P.O. Box 66500, Dar es Salaam &nbsp;|&nbsp; Tel: +255 654 995 533
+        </p>
+    </div>
+    <div class="letterhead-right" id="student-photo-slot">
+        <div class="no-photo">👤</div>
+    </div>
 </div>
 <hr class="slip-divider">
 
@@ -262,11 +303,9 @@
         // Load student photo
         db.collection('students').where('name', '==', student).get()
             .then(function(snap) {
+                var photoDiv = document.getElementById('student-photo-slot');
                 if (!snap.empty && snap.docs[0].data().photoUrl) {
-                    var photoDiv = document.getElementById('student-photo-slot');
-                    if (photoDiv) {
-                        photoDiv.innerHTML = '<img src="' + snap.docs[0].data().photoUrl + '" style="width:60px;height:60px;border-radius:50%;object-fit:cover;border:2px solid #43a047;margin:4px auto;display:block;" onerror="this.style.display=\'none\'">';
-                    }
+                    photoDiv.innerHTML = '<img src="' + snap.docs[0].data().photoUrl + '" onerror="this.parentNode.innerHTML=\'<div class=no-photo>👤</div>\'">';
                 }
             }).catch(function(){});
 

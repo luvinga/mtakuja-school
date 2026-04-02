@@ -107,7 +107,12 @@
 
 <button class="back-btn" onclick="goBack()">← Back</button>
 
-<h2 id="grades-title">Grades Report</h2>
+<div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
+    <div id="pg-photo-slot">
+        <div style="width:50px;height:50px;border-radius:50%;background:#e8f5e9;border:2px dashed #a5d6a7;display:flex;align-items:center;justify-content:center;font-size:22px;">👤</div>
+    </div>
+    <h2 id="grades-title" style="margin:0;">Grades Report</h2>
+</div>
 
 <div id="grades-display"><p>Loading...</p></div>
 
@@ -135,6 +140,15 @@
 
         const label = stream ? cls + ' — ' + stream : cls;
         document.getElementById('grades-title').textContent = 'Grades — ' + student;
+
+        // Load student photo
+        db.collection('students').where('name', '==', student).get()
+            .then(function(snap) {
+                if (!snap.empty && snap.docs[0].data().photoUrl) {
+                    document.getElementById('pg-photo-slot').innerHTML =
+                        '<img src="' + snap.docs[0].data().photoUrl + '" style="width:50px;height:50px;border-radius:50%;object-fit:cover;border:2px solid #43a047;" onerror="this.parentNode.innerHTML=\'<div style=width:50px;height:50px;border-radius:50%;background:#e8f5e9;border:2px dashed #a5d6a7;display:flex;align-items:center;justify-content:center;font-size:22px>👤</div>\'">';
+                }
+            }).catch(function(){});
 
         // Get subjects for this student's class/stream
         let subjects = [];
