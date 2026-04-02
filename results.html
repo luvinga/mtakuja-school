@@ -260,7 +260,7 @@
             'Issued: ' + new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
 
         // Load student photo
-        db.collection('students').where('name', '==', student).where('form', '==', cls).get()
+        db.collection('students').where('name', '==', student).get()
             .then(function(snap) {
                 if (!snap.empty && snap.docs[0].data().photoUrl) {
                     var photoDiv = document.getElementById('student-photo-slot');

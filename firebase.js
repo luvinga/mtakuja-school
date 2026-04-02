@@ -14,3 +14,6 @@ firebase.initializeApp(firebaseConfig);
 
 // Global Firestore instance — used by script.js and page-level scripts
 var db = firebase.firestore();
+
+// Global Storage instance
+var storage = firebase.storage();

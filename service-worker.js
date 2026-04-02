@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mtakuja-app-v5';
+const CACHE_NAME = 'mtakuja-app-v6';
 
 // Only cache static assets — never HTML files
 // HTML files always load fresh so updates are instant
@@ -9,7 +9,8 @@ const STATIC_ASSETS = [
   'firebase.js',
   'firebase-app-compat.js',
   'firebase-firestore-compat.js',
-  'translations.js'
+  'translations.js',
+  'firebase-storage-compat.js'
 ];
 
 self.addEventListener('install', event => {

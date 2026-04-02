@@ -235,8 +235,10 @@
         <label>Parent Phone <small style="font-weight:normal;color:#888;">(optional — can be assigned later)</small></label>
         <input type="tel" id="s-parent-phone" placeholder="e.g. 0714300399">
 
-        <label>Student Photo URL <small style="font-weight:normal;color:#888;">(optional — paste image URL or leave blank)</small></label>
-        <input type="text" id="s-photo" placeholder="https://... or leave blank">
+        <label>Student Photo <small style="font-weight:normal;color:#888;">(optional)</small></label>
+        <input type="file" id="s-photo-file" accept="image/*" style="padding:6px 0; border:none; background:none;">
+        <div id="s-photo-preview" style="margin:4px 0;"></div>
+        <input type="hidden" id="s-photo">
 
         <button type="submit">Add Student</button>
         <div id="add-student-status" class="status-msg"></div>
@@ -269,6 +271,7 @@
 </div>
 <script src="firebase-app-compat.js"></script>
 <script src="firebase-firestore-compat.js"></script>
+<script src="firebase-storage-compat.js"></script>
 <script src="firebase.js"></script>
 <script src="translations.js"></script>
 <script src="script.js?v=2"></script>
@@ -283,6 +286,21 @@
         }
         loadTeachersList();
         loadStudentsList();
+
+        // Photo preview
+        document.getElementById('s-photo-file').addEventListener('change', function() {
+            var file = this.files[0];
+            var preview = document.getElementById('s-photo-preview');
+            if (file) {
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.innerHTML = '<img src="' + e.target.result + '" style="width:60px;height:60px;border-radius:50%;object-fit:cover;border:2px solid #43a047;margin-top:4px;">';
+                };
+                reader.readAsDataURL(file);
+            } else {
+                preview.innerHTML = '';
+            }
+        });
     });
 
     // ── Stream field toggle ─────────────────────────────────────────────────────
@@ -345,6 +363,9 @@
         const form   = document.getElementById('s-form').value;
         const stream = document.getElementById('s-stream').value || null;
         const parentPhone = document.getElementById('s-parent-phone').value.trim();
+        const name = document.getElementById('s-name').value.trim();
+        const fileInput = document.getElementById('s-photo-file');
+        const file = fileInput.files[0];
 
         if (!form) { statusEl.textContent = 'Please select a form.'; statusEl.className = 'status-msg err'; return; }
         if ((form === 'Form 3' || form === 'Form 4') && !stream) {
@@ -352,31 +373,51 @@
             statusEl.className = 'status-msg err';
             return;
         }
-        const doc = {
-            name:            document.getElementById('s-name').value.trim(),
-            form:            form,
-            stream:          stream,
-            parentPhone:     parentPhone || null,
-            parentPassword:  parentPhone ? 'parent123' : null,
-            passwordChanged: false,
-            photoUrl:        document.getElementById('s-photo').value.trim() || null
-        };
 
-        statusEl.textContent = 'Saving...';
+        statusEl.textContent = file ? 'Uploading photo...' : 'Saving...';
         statusEl.className = 'status-msg';
 
-        db.collection('students').add(doc)
-            .then(function() {
-                statusEl.textContent = 'Student added successfully!';
-                statusEl.className = 'status-msg ok';
-                document.getElementById('add-student-form').reset();
-                document.getElementById('stream-field').style.display = 'none';
-                loadStudentsList();
-            })
-            .catch(function(err) {
-                statusEl.textContent = 'Error: ' + err.message;
-                statusEl.className = 'status-msg err';
-            });
+        function saveStudent(photoUrl) {
+            const doc = {
+                name:            name,
+                form:            form,
+                stream:          stream,
+                parentPhone:     parentPhone || null,
+                parentPassword:  parentPhone ? 'parent123' : null,
+                passwordChanged: false,
+                photoUrl:        photoUrl || null
+            };
+            db.collection('students').add(doc)
+                .then(function() {
+                    statusEl.textContent = 'Student added successfully!';
+                    statusEl.className = 'status-msg ok';
+                    document.getElementById('add-student-form').reset();
+                    document.getElementById('s-photo-preview').innerHTML = '';
+                    document.getElementById('stream-field').style.display = 'none';
+                    loadStudentsList();
+                })
+                .catch(function(err) {
+                    statusEl.textContent = 'Error: ' + err.message;
+                    statusEl.className = 'status-msg err';
+                });
+        }
+
+        if (file) {
+            var fileName = 'students/' + Date.now() + '_' + file.name.replace(/\s+/g, '_');
+            var ref = storage.ref(fileName);
+            ref.put(file)
+                .then(function(snapshot) { return snapshot.ref.getDownloadURL(); })
+                .then(function(url) {
+                    statusEl.textContent = 'Saving...';
+                    saveStudent(url);
+                })
+                .catch(function(err) {
+                    statusEl.textContent = 'Photo upload failed: ' + err.message;
+                    statusEl.className = 'status-msg err';
+                });
+        } else {
+            saveStudent(null);
+        }
     }
 
     // ── In-memory cache for filtering ──────────────────────────────────────────
@@ -571,6 +612,13 @@
                     sBtnGroup.appendChild(sResetBtn);
                 }
 
+                const photoBtn = document.createElement('button');
+                photoBtn.className = 'reset-btn';
+                photoBtn.textContent = s.photoUrl ? '🖼️ Photo' : '📷 Add Photo';
+                photoBtn.style.background = '#43a047';
+                photoBtn.onclick = function() { updateStudentPhoto(docId, s.name); };
+                sBtnGroup.appendChild(photoBtn);
+
                 const delBtn = document.createElement('button');
                 delBtn.className = 'delete-btn';
                 delBtn.textContent = 'Delete';
@@ -582,6 +630,32 @@
                 container.appendChild(item);
             });
         });
+    }
+
+    // ── Update Student Photo ────────────────────────────────────────────────────
+    function updateStudentPhoto(docId, name) {
+        // Create a hidden file input and trigger it
+        var input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = function() {
+            var file = input.files[0];
+            if (!file) return;
+            var fileName = 'students/' + Date.now() + '_' + file.name.replace(/\s+/g, '_');
+            var ref = storage.ref(fileName);
+            alert('Uploading photo for ' + name + '... please wait.');
+            ref.put(file)
+                .then(function(snapshot) { return snapshot.ref.getDownloadURL(); })
+                .then(function(url) {
+                    return db.collection('students').doc(docId).update({ photoUrl: url });
+                })
+                .then(function() {
+                    alert('Photo updated for ' + name + '!');
+                    loadStudentsList();
+                })
+                .catch(function(err) { alert('Error: ' + err.message); });
+        };
+        input.click();
     }
 
     // ── Delete Teacher ──────────────────────────────────────────────────────────
