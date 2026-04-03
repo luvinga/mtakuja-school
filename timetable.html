@@ -11,30 +11,49 @@
     <style>
         .timetable-wrap {
             overflow-x: auto;
-            margin-top: 16px;
+            margin-top: 12px;
+            border-radius: 10px;
         }
         table {
             width: 100%;
             border-collapse: collapse;
-            min-width: 500px;
-            font-size: 13px;
+            min-width: 480px;
+            font-size: 12px;
         }
         th {
             background: linear-gradient(135deg, #1b5e20, #2e7d32);
             color: #fff;
-            padding: 10px 8px;
+            padding: 10px 6px;
             text-align: center;
+            white-space: nowrap;
         }
         th.period-col {
-            background: linear-gradient(135deg, #2e7d32, #388e3c);
-            min-width: 70px;
+            min-width: 90px;
+            text-align: left;
+            padding-left: 10px;
         }
         td {
             border: 1px solid #c8e6c9;
-            padding: 8px 6px;
+            padding: 7px 5px;
             text-align: center;
             vertical-align: top;
             color: #333;
+        }
+        td.period-label-cell {
+            text-align: left;
+            padding-left: 10px;
+            white-space: nowrap;
+        }
+        td .period-name {
+            font-weight: bold;
+            color: #1b5e20;
+            display: block;
+            font-size: 12px;
+        }
+        td .period-time {
+            font-size: 10px;
+            color: #888;
+            display: block;
         }
         td .subject {
             font-weight: bold;
@@ -42,7 +61,7 @@
             display: block;
         }
         td .teacher-name {
-            font-size: 11px;
+            font-size: 10px;
             color: #777;
             display: block;
             margin-top: 2px;
@@ -50,14 +69,27 @@
         td.empty-cell {
             color: #bbb;
             font-style: italic;
-            font-size: 12px;
+            font-size: 11px;
         }
-        tr:nth-child(even) td { background: #f1f8e9; }
+        /* Break rows */
+        tr.break-row td {
+            background: linear-gradient(90deg, #fff8e1, #fffde7) !important;
+            color: #f57f17;
+            font-weight: bold;
+            text-align: center;
+            font-size: 12px;
+            border: 1px solid #ffe082;
+            padding: 6px;
+        }
+        tr.break-row td.break-main {
+            color: #e65100;
+        }
+        tr:nth-child(even) td:not(.break-row td) { background: #f1f8e9; }
         #class-label {
             text-align: center;
             color: #555;
-            font-size: 15px;
-            margin-top: -10px;
+            font-size: 14px;
+            margin-top: -8px;
             margin-bottom: 6px;
         }
     </style>
@@ -81,114 +113,126 @@
 <script src="script.js?v=2"></script>
 <script>
     var DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-    var PERIODS = ['Period 1', 'Period 2', 'Period 3', 'Period 4', 'Period 5', 'Period 6', 'Period 7'];
+    var DAY_SHORT = { Monday: 'Mon', Tuesday: 'Tue', Wednesday: 'Wed', Thursday: 'Thu', Friday: 'Fri' };
+
+    // Ordered rows: teaching periods and fixed breaks
+    var ROWS = [
+        { type: 'period', key: 'Period 1', label: 'Period 1', time: '8:00 – 8:40' },
+        { type: 'period', key: 'Period 2', label: 'Period 2', time: '8:45 – 9:25' },
+        { type: 'period', key: 'Period 3', label: 'Period 3', time: '9:30 – 10:10' },
+        { type: 'break',  label: '☕ Morning Break', time: '10:10 – 10:40' },
+        { type: 'period', key: 'Period 4', label: 'Period 4', time: '10:40 – 11:20' },
+        { type: 'period', key: 'Period 5', label: 'Period 5', time: '11:25 – 12:05' },
+        { type: 'period', key: 'Period 6', label: 'Period 6', time: '12:10 – 12:50' },
+        { type: 'break',  label: '🍽️ Lunch Break', time: '12:50 – 1:20' },
+        { type: 'period', key: 'Period 7', label: 'Period 7', time: '1:20 – 2:00' },
+        { type: 'period', key: 'Period 8', label: 'Period 8', time: '2:05 – 2:45' },
+        { type: 'break',  label: '🏫 End of School', time: '2:45 PM' }
+    ];
 
     document.addEventListener('DOMContentLoaded', function() {
         var role = checkAuth();
         if (!role) return;
 
         var cls, stream;
-
         if (role === 'parent') {
             cls    = localStorage.getItem('studentClass');
-            stream = localStorage.getItem('studentStream');
+            stream = localStorage.getItem('studentStream') || null;
         } else {
-            // teacher or admin
             cls    = localStorage.getItem('selectedClass');
-            stream = localStorage.getItem('selectedStream');
+            stream = localStorage.getItem('selectedStream') || null;
         }
 
         if (!cls) {
             document.getElementById('timetable-container').innerHTML =
-                '<p style="text-align:center; color:#999;">No class selected. Please go back and select a class first.</p>';
+                '<p style="text-align:center;color:#999;">No class selected. Please go back and select a class first.</p>';
             return;
         }
 
         var label = stream ? cls + ' — ' + stream : cls;
         document.getElementById('class-label').textContent = label;
-
         loadTimetable(cls, stream);
     });
 
     function loadTimetable(cls, stream) {
         var container = document.getElementById('timetable-container');
-
         var query = db.collection('timetable').where('class', '==', cls);
-        if (stream) {
-            query = query.where('stream', '==', stream);
-        } else {
-            query = query.where('stream', '==', null);
-        }
+        query = stream ? query.where('stream', '==', stream) : query.where('stream', '==', null);
 
         query.get().then(function(snap) {
             if (snap.empty) {
-                container.innerHTML = '<p style="text-align:center; color:#888; padding:20px;">Timetable not set up yet.</p>';
+                container.innerHTML = '<p style="text-align:center;color:#888;padding:20px;">Timetable not set up yet.</p>';
                 return;
             }
-            var data = snap.docs[0].data();
-            var schedule = data.schedule || {};
-            renderTable(schedule, container);
+            renderTable(snap.docs[0].data().schedule || {}, container);
         }).catch(function(err) {
-            container.innerHTML = '<em style="color:red;">Error loading timetable: ' + err.message + '</em>';
+            container.innerHTML = '<em style="color:red;">Error: ' + err.message + '</em>';
         });
     }
 
     function renderTable(schedule, container) {
         var table = document.createElement('table');
 
-        // Header row
+        // Header
         var thead = document.createElement('thead');
-        var headerRow = document.createElement('tr');
+        var hrow = document.createElement('tr');
         var cornerTh = document.createElement('th');
-        cornerTh.textContent = 'Period';
+        cornerTh.textContent = 'Period / Time';
         cornerTh.className = 'period-col';
-        headerRow.appendChild(cornerTh);
+        hrow.appendChild(cornerTh);
         DAYS.forEach(function(day) {
             var th = document.createElement('th');
-            th.textContent = day;
-            headerRow.appendChild(th);
+            th.textContent = day.substring(0, 3);
+            th.title = day;
+            hrow.appendChild(th);
         });
-        thead.appendChild(headerRow);
+        thead.appendChild(hrow);
         table.appendChild(thead);
 
-        // Body rows
         var tbody = document.createElement('tbody');
-        PERIODS.forEach(function(period) {
+
+        ROWS.forEach(function(row) {
             var tr = document.createElement('tr');
 
-            var periodTd = document.createElement('td');
-            periodTd.textContent = period;
-            periodTd.style.fontWeight = 'bold';
-            periodTd.style.color = '#2e7d32';
-            periodTd.style.whiteSpace = 'nowrap';
-            tr.appendChild(periodTd);
+            if (row.type === 'break') {
+                tr.className = 'break-row';
+                var breakTd = document.createElement('td');
+                breakTd.className = 'break-main';
+                breakTd.innerHTML = '<span style="display:block;">' + row.label + '</span><span style="font-size:10px;font-weight:normal;color:#888;">' + row.time + '</span>';
+                tr.appendChild(breakTd);
+                // Span all 5 day columns
+                var spanTd = document.createElement('td');
+                spanTd.colSpan = 5;
+                spanTd.textContent = row.label === '🏫 End of School' ? 'All classes dismiss at 3:00 PM' : 'Break for all classes';
+                tr.appendChild(spanTd);
+            } else {
+                // Period label cell
+                var labelTd = document.createElement('td');
+                labelTd.className = 'period-label-cell';
+                labelTd.innerHTML =
+                    '<span class="period-name">' + row.label + '</span>' +
+                    '<span class="period-time">' + row.time + '</span>';
+                tr.appendChild(labelTd);
 
-            DAYS.forEach(function(day) {
-                var td = document.createElement('td');
-                var dayData = schedule[day] || {};
-                var cell = dayData[period];
-                if (cell && cell.subject) {
-                    var subjectSpan = document.createElement('span');
-                    subjectSpan.className = 'subject';
-                    subjectSpan.textContent = cell.subject;
-                    td.appendChild(subjectSpan);
-                    if (cell.teacher) {
-                        var teacherSpan = document.createElement('span');
-                        teacherSpan.className = 'teacher-name';
-                        teacherSpan.textContent = cell.teacher;
-                        td.appendChild(teacherSpan);
+                DAYS.forEach(function(day) {
+                    var td = document.createElement('td');
+                    var cell = (schedule[day] && schedule[day][row.key]) || {};
+                    if (cell.subject) {
+                        td.innerHTML =
+                            '<span class="subject">' + cell.subject + '</span>' +
+                            (cell.teacher ? '<span class="teacher-name">' + cell.teacher + '</span>' : '');
+                    } else {
+                        td.className = 'empty-cell';
+                        td.textContent = '—';
                     }
-                } else {
-                    td.className = 'empty-cell';
-                    td.textContent = '—';
-                }
-                tr.appendChild(td);
-            });
+                    tr.appendChild(td);
+                });
+            }
 
             tbody.appendChild(tr);
         });
-        table.appendChild(tbody);
 
+        table.appendChild(tbody);
         container.innerHTML = '';
         container.appendChild(table);
     }

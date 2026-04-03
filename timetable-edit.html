@@ -16,27 +16,10 @@
             flex-wrap: wrap;
             margin-bottom: 16px;
         }
-        .selector-row select {
-            flex: 1;
-            min-width: 120px;
-            margin: 0;
-        }
-        .selector-row button {
-            width: auto;
-            margin: 0;
-            padding: 10px 20px;
-            font-size: 14px;
-        }
-        .timetable-wrap {
-            overflow-x: auto;
-            margin-top: 16px;
-        }
-        table {
-            border-collapse: collapse;
-            font-size: 12px;
-            min-width: 560px;
-            width: 100%;
-        }
+        .selector-row select { flex: 1; min-width: 120px; margin: 0; }
+        .selector-row button { width: auto; margin: 0; padding: 10px 20px; font-size: 14px; }
+        .timetable-wrap { overflow-x: auto; margin-top: 12px; border-radius: 10px; }
+        table { border-collapse: collapse; font-size: 12px; min-width: 520px; width: 100%; }
         th {
             background: linear-gradient(135deg, #1b5e20, #2e7d32);
             color: #fff;
@@ -44,13 +27,19 @@
             text-align: center;
             white-space: nowrap;
         }
-        th.period-col { min-width: 72px; }
+        th.period-col { min-width: 90px; text-align: left; padding-left: 8px; }
         td {
             border: 1px solid #c8e6c9;
             padding: 4px 3px;
             vertical-align: top;
-            min-width: 100px;
+            min-width: 90px;
         }
+        td.period-label-cell {
+            padding: 6px 8px;
+            white-space: nowrap;
+        }
+        .period-name { font-weight: bold; color: #2e7d32; display: block; font-size: 12px; }
+        .period-time { font-size: 10px; color: #888; display: block; }
         td input[type="text"] {
             display: block;
             width: 100%;
@@ -67,28 +56,28 @@
             border-color: #43a047;
             background: #f9fbe7;
         }
-        td input[type="text"].teacher-input {
-            font-size: 11px;
-            color: #666;
-            border-color: #e0e0e0;
-        }
-        .period-label {
-            font-weight: bold;
-            color: #2e7d32;
-            white-space: nowrap;
-            padding: 4px 8px;
-            font-size: 12px;
-        }
+        td input.teacher-input { font-size: 11px; color: #666; border-color: #e0e0e0; }
         tr:nth-child(even) td { background: #f9fef9; }
-        #save-btn {
-            margin-top: 16px;
-            width: 100%;
-        }
-        #save-status {
-            font-size: 13px;
+
+        /* Break rows - not editable */
+        tr.break-row td {
+            background: linear-gradient(90deg, #fff8e1, #fffde7) !important;
+            color: #e65100;
+            font-weight: bold;
             text-align: center;
-            margin-top: 8px;
+            font-size: 12px;
+            border: 1px solid #ffe082;
+            padding: 6px 8px;
         }
+        tr.break-row td .break-time {
+            font-size: 10px;
+            font-weight: normal;
+            color: #888;
+            display: block;
+        }
+
+        #save-btn { margin-top: 16px; width: 100%; }
+        #save-status { font-size: 13px; text-align: center; margin-top: 8px; }
         #save-status.ok  { color: #2e7d32; }
         #save-status.err { color: #c62828; }
         #timetable-area { display: none; }
@@ -118,7 +107,8 @@
 </div>
 
 <div id="timetable-area">
-    <p id="timetable-label" style="text-align:center; color:#555; font-size:14px; margin-bottom:8px;"></p>
+    <p id="timetable-label" style="text-align:center;color:#555;font-size:14px;margin-bottom:8px;"></p>
+    <p style="font-size:12px;color:#888;text-align:center;margin-bottom:8px;">Fill in Subject and Teacher name for each period. Break rows are fixed.</p>
     <div class="timetable-wrap">
         <table id="timetable-table"></table>
     </div>
@@ -133,17 +123,30 @@
 <script src="translations.js"></script>
 <script src="script.js?v=2"></script>
 <script>
-    var DAYS    = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-    var PERIODS = ['Period 1', 'Period 2', 'Period 3', 'Period 4', 'Period 5', 'Period 6', 'Period 7'];
+    var DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
-    var existingDocId = null; // Firestore doc ID if one already exists
+    // Full schedule rows including breaks
+    var ROWS = [
+        { type: 'period', key: 'Period 1', label: 'Period 1', time: '8:00 – 8:40' },
+        { type: 'period', key: 'Period 2', label: 'Period 2', time: '8:45 – 9:25' },
+        { type: 'period', key: 'Period 3', label: 'Period 3', time: '9:30 – 10:10' },
+        { type: 'break',  label: '☕ Morning Break', time: '10:10 – 10:40' },
+        { type: 'period', key: 'Period 4', label: 'Period 4', time: '10:40 – 11:20' },
+        { type: 'period', key: 'Period 5', label: 'Period 5', time: '11:25 – 12:05' },
+        { type: 'period', key: 'Period 6', label: 'Period 6', time: '12:10 – 12:50' },
+        { type: 'break',  label: '🍽️ Lunch Break', time: '12:50 – 1:20' },
+        { type: 'period', key: 'Period 7', label: 'Period 7', time: '1:20 – 2:00' },
+        { type: 'period', key: 'Period 8', label: 'Period 8', time: '2:05 – 2:45' },
+        { type: 'break',  label: '🏫 End of School', time: '2:45 PM' }
+    ];
+
+    var existingDocId = null;
 
     document.addEventListener('DOMContentLoaded', function() {
         var role = checkAuth();
         if (role !== 'admin') {
             alert('Admin access required.');
             goTo('teacher-dashboard.html');
-            return;
         }
     });
 
@@ -164,21 +167,15 @@
 
         if (!cls) { alert('Please select a class.'); return; }
         if ((cls === 'Form 3' || cls === 'Form 4') && !stream) {
-            alert('Please select a stream for ' + cls + '.');
-            return;
+            alert('Please select a stream for ' + cls + '.'); return;
         }
 
         existingDocId = null;
-
         var label = stream ? cls + ' — ' + stream : cls;
         document.getElementById('timetable-label').textContent = 'Editing: ' + label;
 
         var query = db.collection('timetable').where('class', '==', cls);
-        if (stream) {
-            query = query.where('stream', '==', stream);
-        } else {
-            query = query.where('stream', '==', null);
-        }
+        query = stream ? query.where('stream', '==', stream) : query.where('stream', '==', null);
 
         query.get().then(function(snap) {
             var schedule = {};
@@ -203,68 +200,76 @@
         var thead = document.createElement('thead');
         var hrow = document.createElement('tr');
         var cornerTh = document.createElement('th');
-        cornerTh.textContent = 'Period';
+        cornerTh.textContent = 'Period / Time';
         cornerTh.className = 'period-col';
         hrow.appendChild(cornerTh);
         DAYS.forEach(function(day) {
             var th = document.createElement('th');
-            th.textContent = day;
+            th.textContent = day.substring(0, 3);
             hrow.appendChild(th);
         });
         thead.appendChild(hrow);
         table.appendChild(thead);
 
-        // Body
         var tbody = document.createElement('tbody');
-        PERIODS.forEach(function(period) {
+
+        ROWS.forEach(function(row) {
             var tr = document.createElement('tr');
 
-            var labelTd = document.createElement('td');
-            labelTd.className = 'period-label';
-            labelTd.textContent = period;
-            tr.appendChild(labelTd);
-
-            DAYS.forEach(function(day) {
+            if (row.type === 'break') {
+                tr.className = 'break-row';
                 var td = document.createElement('td');
-
-                var cell = (schedule[day] && schedule[day][period]) || {};
-
-                var subjInput = document.createElement('input');
-                subjInput.type = 'text';
-                subjInput.placeholder = 'Subject';
-                subjInput.value = cell.subject || '';
-                subjInput.dataset.day = day;
-                subjInput.dataset.period = period;
-                subjInput.dataset.field = 'subject';
-
-                var teacherInput = document.createElement('input');
-                teacherInput.type = 'text';
-                teacherInput.className = 'teacher-input';
-                teacherInput.placeholder = 'Teacher';
-                teacherInput.value = cell.teacher || '';
-                teacherInput.dataset.day = day;
-                teacherInput.dataset.period = period;
-                teacherInput.dataset.field = 'teacher';
-
-                td.appendChild(subjInput);
-                td.appendChild(teacherInput);
+                td.colSpan = 6;
+                td.innerHTML = row.label + '<span class="break-time">' + row.time + '</span>';
                 tr.appendChild(td);
-            });
+            } else {
+                var labelTd = document.createElement('td');
+                labelTd.className = 'period-label-cell';
+                labelTd.innerHTML =
+                    '<span class="period-name">' + row.label + '</span>' +
+                    '<span class="period-time">' + row.time + '</span>';
+                tr.appendChild(labelTd);
+
+                DAYS.forEach(function(day) {
+                    var td = document.createElement('td');
+                    var cell = (schedule[day] && schedule[day][row.key]) || {};
+
+                    var subjInput = document.createElement('input');
+                    subjInput.type = 'text';
+                    subjInput.placeholder = 'Subject';
+                    subjInput.value = cell.subject || '';
+                    subjInput.dataset.day = day;
+                    subjInput.dataset.period = row.key;
+                    subjInput.dataset.field = 'subject';
+
+                    var teacherInput = document.createElement('input');
+                    teacherInput.type = 'text';
+                    teacherInput.className = 'teacher-input';
+                    teacherInput.placeholder = 'Teacher';
+                    teacherInput.value = cell.teacher || '';
+                    teacherInput.dataset.day = day;
+                    teacherInput.dataset.period = row.key;
+                    teacherInput.dataset.field = 'teacher';
+
+                    td.appendChild(subjInput);
+                    td.appendChild(teacherInput);
+                    tr.appendChild(td);
+                });
+            }
 
             tbody.appendChild(tr);
         });
+
         table.appendChild(tbody);
     }
 
     function saveTimetable() {
         var cls    = document.getElementById('sel-class').value;
         var stream = document.getElementById('sel-stream').value || null;
-
         var statusEl = document.getElementById('save-status');
         statusEl.textContent = 'Saving...';
         statusEl.className = '';
 
-        // Collect schedule from inputs
         var schedule = {};
         var inputs = document.getElementById('timetable-table').querySelectorAll('input[type="text"]');
         inputs.forEach(function(input) {
@@ -276,23 +281,14 @@
             schedule[day][period][field] = input.value.trim();
         });
 
-        var docData = {
-            class:    cls,
-            stream:   stream,
-            schedule: schedule
-        };
+        var docData = { class: cls, stream: stream, schedule: schedule };
 
-        var promise;
-        if (existingDocId) {
-            promise = db.collection('timetable').doc(existingDocId).set(docData);
-        } else {
-            promise = db.collection('timetable').add(docData).then(function(ref) {
-                existingDocId = ref.id;
-            });
-        }
+        var promise = existingDocId
+            ? db.collection('timetable').doc(existingDocId).set(docData)
+            : db.collection('timetable').add(docData).then(function(ref) { existingDocId = ref.id; });
 
         promise.then(function() {
-            statusEl.textContent = 'Timetable saved successfully!';
+            statusEl.textContent = '✅ Timetable saved successfully!';
             statusEl.className = 'ok';
         }).catch(function(err) {
             statusEl.textContent = 'Error saving: ' + err.message;
