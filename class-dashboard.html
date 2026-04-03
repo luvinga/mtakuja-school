@@ -131,8 +131,10 @@
         addActionBtn(container, '👥 View Students', 'students.html');
         addActionBtn(container, '📋 Attendance Records', 'attendance-records.html');
         addActionBtn(container, '📊 Grades Records', 'grades-records.html');
-        addActionBtn(container, '🏆 Class Performance & Ranking', 'class-performance.html');
         addActionBtn(container, '📅 View Timetable', 'timetable.html');
+        if (canAttend || canGrade) {
+            addActionBtn(container, '🏆 Class Performance & Ranking', 'class-performance.html');
+        }
     }
 
     function addActionBtn(container, label, url) {

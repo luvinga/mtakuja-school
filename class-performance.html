@@ -25,12 +25,7 @@
             font-size: 14px;
             margin: 0;
         }
-        .filter-row button {
-            width: auto;
-            padding: 10px 20px;
-            font-size: 14px;
-            margin: 0;
-        }
+        .filter-row button { width: auto; padding: 10px 20px; font-size: 14px; margin: 0; }
 
         .section-title {
             background: linear-gradient(135deg, #1b5e20, #2e7d32);
@@ -42,38 +37,25 @@
             margin: 20px 0 10px 0;
         }
 
-        /* ── Subject Performance Table ── */
-        .perf-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 11px;
-            margin-bottom: 8px;
+        .stats-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
         }
-        .perf-table th {
-            background: #4CAF50;
-            color: #fff;
-            padding: 7px 5px;
-            text-align: center;
-            white-space: nowrap;
-        }
-        .perf-table th:first-child { text-align: left; padding-left: 8px; }
-        .perf-table td {
-            border-bottom: 1px solid #e0e0e0;
-            padding: 6px 5px;
+        .stat-card {
+            flex: 1;
+            min-width: 90px;
+            background: #f0f7f0;
+            border: 1px solid #a5d6a7;
+            border-radius: 8px;
+            padding: 10px;
             text-align: center;
         }
-        .perf-table td:first-child { text-align: left; padding-left: 8px; font-weight: bold; }
-        .perf-table tr:nth-child(even) { background: #f1f8e9; }
-        .grade-A { color: #1b5e20; font-weight: bold; }
-        .grade-B { color: #2e7d32; }
-        .grade-C { color: #f57c00; }
-        .grade-D { color: #e65100; }
-        .grade-F { color: #c62828; font-weight: bold; }
-        .pass-good { color: #2e7d32; font-weight: bold; }
-        .pass-warn { color: #f57c00; font-weight: bold; }
-        .pass-bad  { color: #c62828; font-weight: bold; }
+        .stat-card .stat-num { font-size: 22px; font-weight: bold; color: #1b5e20; }
+        .stat-card .stat-label { font-size: 11px; color: #666; margin-top: 2px; }
 
-        /* ── Student Ranking Table ── */
+        /* Student Ranking */
         .rank-table {
             width: 100%;
             border-collapse: collapse;
@@ -97,13 +79,9 @@
         .rank-table tr:nth-child(even) { background: #f1f8e9; }
         .rank-badge {
             display: inline-block;
-            width: 26px;
-            height: 26px;
-            line-height: 26px;
+            width: 26px; height: 26px; line-height: 26px;
             border-radius: 50%;
-            font-weight: bold;
-            font-size: 12px;
-            text-align: center;
+            font-weight: bold; font-size: 12px; text-align: center;
         }
         .rank-1 { background: #FFD700; color: #333; }
         .rank-2 { background: #C0C0C0; color: #333; }
@@ -115,48 +93,78 @@
         .div-IV  { color: #e65100; }
         .div-0   { color: #c62828; font-weight: bold; }
 
-        /* ── Summary Stats ── */
-        .stats-row {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-bottom: 12px;
+        /* Subject Performance */
+        .perf-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+            margin-bottom: 8px;
         }
-        .stat-card {
-            flex: 1;
-            min-width: 100px;
-            background: #f0f7f0;
-            border: 1px solid #a5d6a7;
-            border-radius: 8px;
-            padding: 10px;
+        .perf-table th {
+            background: #4CAF50;
+            color: #fff;
+            padding: 7px 5px;
+            text-align: center;
+            white-space: nowrap;
+        }
+        .perf-table th:nth-child(2) { text-align: left; padding-left: 8px; }
+        .perf-table td {
+            border-bottom: 1px solid #e0e0e0;
+            padding: 6px 5px;
             text-align: center;
         }
-        .stat-card .stat-num {
+        .perf-table td:nth-child(2) { text-align: left; padding-left: 8px; font-weight: bold; }
+        .perf-table tr:nth-child(even) { background: #f1f8e9; }
+        .grade-A { color: #1b5e20; font-weight: bold; }
+        .grade-B { color: #2e7d32; }
+        .grade-C { color: #f57c00; }
+        .grade-D { color: #e65100; }
+        .grade-F { color: #c62828; font-weight: bold; }
+        .pass-good { color: #2e7d32; font-weight: bold; }
+        .pass-warn { color: #f57c00; font-weight: bold; }
+        .pass-bad  { color: #c62828; font-weight: bold; }
+        .my-subject-row td { background: #e8f5e9 !important; border-left: 4px solid #1b5e20; }
+        .my-subject-banner {
+            background: #1b5e20;
+            color: #fff;
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: 13px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .my-subject-banner .banner-rank {
             font-size: 22px;
             font-weight: bold;
-            color: #1b5e20;
+            background: #FFD700;
+            color: #333;
+            border-radius: 50%;
+            width: 36px; height: 36px;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
         }
-        .stat-card .stat-label {
-            font-size: 11px;
-            color: #666;
-            margin-top: 2px;
-        }
+        .my-subject-banner .banner-rank.rank-silver { background: #C0C0C0; }
+        .my-subject-banner .banner-rank.rank-bronze { background: #CD7F32; color: #fff; }
+        .my-subject-banner .banner-rank.rank-other  { background: #a5d6a7; color: #1b5e20; }
 
-        /* ── Print ── */
         .print-btn { margin-top: 16px; width: 100%; }
+
         @media print {
             .back-btn, .print-btn, .filter-row { display: none !important; }
             body { background: white; }
             .app-container {
-                box-shadow: none;
-                border-radius: 0;
-                height: auto;
-                width: 100%;
-                max-width: 100%;
-                padding: 12px;
+                box-shadow: none; border-radius: 0;
+                height: auto; width: 100%; max-width: 100%; padding: 12px;
             }
-            .section-title { background: #1b5e20 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .perf-table th, .rank-table th { background: #4CAF50 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .section-title {
+                background: #1b5e20 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .perf-table th { background: #4CAF50 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .rank-table th { background: #1b5e20 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         }
     </style>
 </head>
@@ -171,22 +179,27 @@
     <select id="term-select">
         <option value="Mid Term 1">Mid Term 1</option>
         <option value="Terminal 1">Terminal 1</option>
-        <option value="Term 1 Overall">Term 1 Overall (Mid T1 + Term 1 avg)</option>
+        <option value="Term 1 Overall">Term 1 Overall (Mid T1 + Term 1)</option>
         <option value="Mid Term 2">Mid Term 2</option>
         <option value="Terminal 2">Terminal 2</option>
-        <option value="Term 2 Overall">Term 2 Overall (Mid T2 + Term 2 avg)</option>
+        <option value="Term 2 Overall">Term 2 Overall (Mid T2 + Term 2)</option>
         <option value="Full Year">Full Year (All 4 Exams)</option>
     </select>
     <button onclick="renderAll()">Load</button>
 </div>
 
 <div id="main-content" style="display:none;">
-    <div class="stats-row" id="stats-row"></div>
-    <div class="section-title">📚 Subject Performance</div>
-    <div class="table-scroll"><table class="perf-table" id="subject-table"></table></div>
+    <!-- Student ranking shown first (class teacher / admin only) -->
+    <div id="ranking-section">
+        <div class="stats-row" id="stats-row"></div>
+        <div class="section-title">🏆 Student Ranking</div>
+        <div class="table-scroll"><table class="rank-table" id="ranking-table"></table></div>
+    </div>
 
-    <div class="section-title">🏆 Student Ranking</div>
-    <div class="table-scroll"><table class="rank-table" id="ranking-table"></table></div>
+    <!-- Subject performance (all teachers) -->
+    <div class="section-title">📚 Subject Performance Ranking</div>
+    <div id="my-subject-banner"></div>
+    <div class="table-scroll"><table class="perf-table" id="subject-table"></table></div>
 
     <button class="print-btn" onclick="window.print()">🖨️ Print Report</button>
 </div>
@@ -202,7 +215,9 @@
 <script>
     var allStudents = [];
     var allGradeDocs = [];
-    var cls, stream, subjects;
+    var cls, stream, teacher, viewSubjects;
+    var isClassTeacher = false; // can see student ranking
+    var subjectFilter = null;   // subject teachers: only show their subject
 
     document.addEventListener('DOMContentLoaded', function() {
         var role = checkAuth();
@@ -215,51 +230,70 @@
         var label = stream ? cls + ' — ' + stream : cls;
         document.getElementById('page-subtitle').textContent = label;
 
-        subjects = stream ? (streamSubjects[stream] || []) : (classSubjects[cls] || []);
+        // Always show all subjects
+        viewSubjects = stream ? (streamSubjects[stream] || []) : (classSubjects[cls] || []);
 
-        // Load students and all grades in parallel
+        try { teacher = JSON.parse(localStorage.getItem('teacherData')); } catch(e) {}
+
+        if (!teacher || teacher.role === 'admin') {
+            isClassTeacher = true;
+        } else if (teacher.classTeacher &&
+                   teacher.classTeacher.form === cls &&
+                   (teacher.classTeacher.stream || null) === stream) {
+            isClassTeacher = true;
+        } else {
+            // Subject teacher — show all subjects but highlight theirs
+            isClassTeacher = false;
+            subjectFilter = teacher.subject || null;
+            document.getElementById('ranking-section').style.display = 'none';
+        }
+
+        // Load students and grades
         Promise.all([
             loadStudentsForClass(cls, stream),
             db.collection('grades').where('class', '==', cls).where('stream', '==', stream).get()
         ]).then(function(results) {
             allStudents = results[0].sort(function(a, b) { return a.name.localeCompare(b.name); });
-            var snap = results[1];
-            allGradeDocs = snap.docs.map(function(d) { return d.data(); });
+            allGradeDocs = results[1].docs.map(function(d) { return d.data(); });
             document.getElementById('loading-msg').textContent = 'Select a term and click Load.';
         }).catch(function(err) {
-            document.getElementById('loading-msg').textContent = 'Error loading data: ' + err.message;
+            document.getElementById('loading-msg').textContent = 'Error: ' + err.message;
         });
     });
 
-    // Returns the exam keys to aggregate for a given term selection
     function getExamKeys(termSel) {
         if (termSel === 'Term 1 Overall') return ['Mid Term 1', 'Terminal 1'];
         if (termSel === 'Term 2 Overall') return ['Mid Term 2', 'Terminal 2'];
         if (termSel === 'Full Year')      return ['Mid Term 1', 'Terminal 1', 'Mid Term 2', 'Terminal 2'];
-        return [termSel]; // single exam
+        return [termSel];
     }
 
-    // For each student × subject, compute average marks across given exam keys
-    function buildStudentSubjectMarks(examKeys) {
-        // gradeMap[examKey][subject][studentName] = marks
+    // Build gradeMap[examType][subject][studentName] = marks — last record wins
+    function buildGradeMap(examKeys) {
         var gradeMap = {};
-        allGradeDocs.forEach(function(rec) {
-            var et = rec.examType;
-            if (!examKeys.includes(et)) return;
+        // Sort docs by date ascending so last record wins
+        var sorted = allGradeDocs.slice().sort(function(a, b) {
+            return (a.date || '') < (b.date || '') ? -1 : 1;
+        });
+        sorted.forEach(function(rec) {
+            if (!examKeys.includes(rec.examType)) return;
             if (!rec.subject || !rec.grades) return;
+            var et = rec.examType;
             if (!gradeMap[et]) gradeMap[et] = {};
             if (!gradeMap[et][rec.subject]) gradeMap[et][rec.subject] = {};
-            // last record wins (sorted by date)
             Object.keys(rec.grades).forEach(function(student) {
                 gradeMap[et][rec.subject][student] = rec.grades[student];
             });
         });
+        return gradeMap;
+    }
 
-        // studentMarks[studentName][subject] = average marks across examKeys (or null)
+    // For each student × subject: average marks across examKeys (or null)
+    function buildStudentMarks(examKeys, gradeMap) {
         var studentMarks = {};
         allStudents.forEach(function(s) { studentMarks[s.name] = {}; });
 
-        subjects.forEach(function(subject) {
+        viewSubjects.forEach(function(subject) {
             allStudents.forEach(function(s) {
                 var vals = [];
                 examKeys.forEach(function(et) {
@@ -270,11 +304,10 @@
                     }
                 });
                 studentMarks[s.name][subject] = vals.length > 0
-                    ? Math.round((vals.reduce(function(a, b) { return a + b; }, 0) / vals.length) * 10) / 10
+                    ? Math.round(vals.reduce(function(a, b) { return a + b; }, 0) / vals.length * 10) / 10
                     : null;
             });
         });
-
         return studentMarks;
     }
 
@@ -285,27 +318,28 @@
         }
         var termSel  = document.getElementById('term-select').value;
         var examKeys = getExamKeys(termSel);
-        var studentMarks = buildStudentSubjectMarks(examKeys);
+        var gradeMap = buildGradeMap(examKeys);
+        var studentMarks = buildStudentMarks(examKeys, gradeMap);
 
-        renderStats(studentMarks, termSel);
+        if (isClassTeacher) {
+            renderStats(studentMarks);
+            renderRankingTable(studentMarks);
+        }
         renderSubjectTable(studentMarks);
-        renderRankingTable(studentMarks);
 
         document.getElementById('main-content').style.display = 'block';
         document.getElementById('loading-msg').style.display = 'none';
     }
 
-    function renderStats(studentMarks, termSel) {
+    function renderStats(studentMarks) {
         var total = allStudents.length;
-        // Count how many students have at least one grade in this term
         var sat = allStudents.filter(function(s) {
-            return subjects.some(function(sub) { return studentMarks[s.name][sub] !== null; });
+            return viewSubjects.some(function(sub) { return studentMarks[s.name][sub] !== null; });
         }).length;
 
-        // Overall pass rate (C and above) across all subject grades
         var allGrades = [], passCount = 0;
         allStudents.forEach(function(s) {
-            subjects.forEach(function(sub) {
+            viewSubjects.forEach(function(sub) {
                 var m = studentMarks[s.name][sub];
                 if (m !== null) {
                     allGrades.push(m);
@@ -316,8 +350,8 @@
         });
         var passRate = allGrades.length > 0 ? Math.round(passCount / allGrades.length * 100) : 0;
 
-        // Best subject (highest avg marks)
-        var subjectAvgs = subjects.map(function(sub) {
+        // Best subject
+        var subjectAvgs = viewSubjects.map(function(sub) {
             var vals = allStudents.map(function(s) { return studentMarks[s.name][sub]; }).filter(function(v) { return v !== null; });
             return { subject: sub, avg: vals.length ? vals.reduce(function(a, b) { return a + b; }, 0) / vals.length : null };
         }).filter(function(x) { return x.avg !== null; });
@@ -336,106 +370,57 @@
         return '<div class="stat-card"><div class="stat-num">' + num + '</div><div class="stat-label">' + label + '</div></div>';
     }
 
-    function renderSubjectTable(studentMarks) {
-        var table = document.getElementById('subject-table');
-        var html = '<thead><tr>';
-        html += '<th>Subject</th><th>Enrolled</th><th>Sat</th><th>Absent</th>';
-        html += '<th class="grade-A">A</th><th class="grade-B">B</th><th class="grade-C">C</th>';
-        html += '<th class="grade-D">D</th><th class="grade-F">F</th>';
-        html += '<th>Avg Marks</th><th>Pass %</th>';
-        html += '</tr></thead><tbody>';
-
-        subjects.forEach(function(subject) {
-            var enrolled = allStudents.length;
-            var marks = allStudents.map(function(s) { return studentMarks[s.name][subject]; });
-            var sat = marks.filter(function(m) { return m !== null; });
-            var absent = enrolled - sat.length;
-            var counts = { A: 0, B: 0, C: 0, D: 0, F: 0 };
-            sat.forEach(function(m) { counts[marksToGrade(m)]++; });
-            var avgMarks = sat.length ? Math.round(sat.reduce(function(a, b) { return a + b; }, 0) / sat.length * 10) / 10 : null;
-            var pass = counts.A + counts.B + counts.C;
-            var passRate = sat.length ? Math.round(pass / sat.length * 100) : 0;
-            var passClass = passRate >= 70 ? 'pass-good' : passRate >= 40 ? 'pass-warn' : 'pass-bad';
-
-            html += '<tr>';
-            html += '<td>' + subject + '</td>';
-            html += '<td>' + enrolled + '</td>';
-            html += '<td>' + sat.length + '</td>';
-            html += '<td>' + (absent > 0 ? '<span style="color:#c62828;">' + absent + '</span>' : '0') + '</td>';
-            html += '<td class="grade-A">' + counts.A + '</td>';
-            html += '<td class="grade-B">' + counts.B + '</td>';
-            html += '<td class="grade-C">' + counts.C + '</td>';
-            html += '<td class="grade-D">' + counts.D + '</td>';
-            html += '<td class="grade-F">' + counts.F + '</td>';
-            html += '<td>' + (avgMarks !== null ? avgMarks : '<span style="color:#bbb;">—</span>') + '</td>';
-            html += '<td class="' + passClass + '">' + (sat.length ? passRate + '%' : '—') + '</td>';
-            html += '</tr>';
-        });
-
-        html += '</tbody>';
-        table.innerHTML = html;
-    }
-
     function renderRankingTable(studentMarks) {
-        // Compute points + division per student
+        // Build student data
         var studentData = allStudents.map(function(s) {
             var pointsList = [];
-            subjects.forEach(function(sub) {
+            var allMarks = [];
+            viewSubjects.forEach(function(sub) {
                 var m = studentMarks[s.name][sub];
-                if (m !== null) pointsList.push(gradeToPoints(m));
+                if (m !== null) {
+                    pointsList.push(gradeToPoints(m));
+                    allMarks.push(m);
+                }
             });
-            var division = '—', totalPts = '—', subjectsSat = pointsList.length;
+
+            var totalPts = null, division = null, avgMarks = null;
             if (pointsList.length > 0) {
                 var best7 = pointsList.slice().sort(function(a, b) { return a - b; }).slice(0, 7);
                 totalPts = best7.reduce(function(a, b) { return a + b; }, 0);
                 division = calculateDivision(pointsList);
+                avgMarks = Math.round(allMarks.reduce(function(a, b) { return a + b; }, 0) / allMarks.length * 10) / 10;
             }
-            // Overall average marks
-            var allMarks = subjects.map(function(sub) { return studentMarks[s.name][sub]; }).filter(function(v) { return v !== null; });
-            var avgMarks = allMarks.length ? Math.round(allMarks.reduce(function(a, b) { return a + b; }, 0) / allMarks.length * 10) / 10 : null;
-
-            return { name: s.name, totalPts: totalPts, division: division, subjectsSat: subjectsSat, avgMarks: avgMarks };
+            return { name: s.name, totalPts: totalPts, division: division, avgMarks: avgMarks, subjectsSat: pointsList.length };
         });
 
-        // Sort: students who sat first (by points asc = better), then absent last
+        // Sort: by points asc (lower = better in NECTA), tiebreak by avgMarks desc (higher = better)
+        // Students who sat come first, absent last
         studentData.sort(function(a, b) {
-            if (a.totalPts === '—' && b.totalPts === '—') return 0;
-            if (a.totalPts === '—') return 1;
-            if (b.totalPts === '—') return -1;
-            return a.totalPts - b.totalPts;
+            if (a.totalPts === null && b.totalPts === null) return 0;
+            if (a.totalPts === null) return 1;
+            if (b.totalPts === null) return -1;
+            if (a.totalPts !== b.totalPts) return a.totalPts - b.totalPts;
+            // Same points → higher avg marks wins
+            return (b.avgMarks || 0) - (a.avgMarks || 0);
         });
 
-        var table = document.getElementById('ranking-table');
         var html = '<thead><tr>';
         html += '<th>Rank</th><th>Student Name</th><th>Subjects Sat</th><th>Avg Marks</th><th>Points (Best 7)</th><th>Division</th>';
         html += '</tr></thead><tbody>';
 
-        var rank = 0;
-        var prevPts = null;
-        var rankGap = 0;
-
+        var rank = 1;
         studentData.forEach(function(s, i) {
-            if (s.totalPts !== '—') {
-                if (s.totalPts !== prevPts) {
-                    rank += 1 + rankGap;
-                    rankGap = 0;
-                } else {
-                    rankGap++;
-                }
-                prevPts = s.totalPts;
+            var rankDisplay = '—', rankClass = 'rank-other';
+            if (s.totalPts !== null) {
+                rankDisplay = rank;
+                if (rank === 1) rankClass = 'rank-1';
+                else if (rank === 2) rankClass = 'rank-2';
+                else if (rank === 3) rankClass = 'rank-3';
+                rank++;
             }
 
-            var rankDisplay, rankClass;
-            if (s.totalPts === '—') {
-                rankDisplay = '—';
-                rankClass = 'rank-other';
-            } else if (rank === 1) { rankDisplay = rank; rankClass = 'rank-1'; }
-            else if (rank === 2)   { rankDisplay = rank; rankClass = 'rank-2'; }
-            else if (rank === 3)   { rankDisplay = rank; rankClass = 'rank-3'; }
-            else                   { rankDisplay = rank; rankClass = 'rank-other'; }
-
             var divClass = '';
-            if (s.division === 'Division I')   divClass = 'div-I';
+            if (s.division === 'Division I')        divClass = 'div-I';
             else if (s.division === 'Division II')  divClass = 'div-II';
             else if (s.division === 'Division III') divClass = 'div-III';
             else if (s.division === 'Division IV')  divClass = 'div-IV';
@@ -446,13 +431,93 @@
             html += '<td>' + s.name + '</td>';
             html += '<td>' + s.subjectsSat + '</td>';
             html += '<td>' + (s.avgMarks !== null ? s.avgMarks : '<span style="color:#bbb;">—</span>') + '</td>';
-            html += '<td>' + (s.totalPts !== '—' ? s.totalPts : '<span style="color:#bbb;">—</span>') + '</td>';
-            html += '<td class="' + divClass + '">' + s.division + '</td>';
+            html += '<td>' + (s.totalPts !== null ? s.totalPts : '<span style="color:#bbb;">—</span>') + '</td>';
+            html += '<td class="' + divClass + '">' + (s.division || '—') + '</td>';
             html += '</tr>';
         });
 
         html += '</tbody>';
-        table.innerHTML = html;
+        document.getElementById('ranking-table').innerHTML = html;
+    }
+
+    function renderSubjectTable(studentMarks) {
+        // Build subject stats then sort by avg marks descending (best subject = rank 1)
+        var subjectStats = viewSubjects.map(function(subject) {
+            var enrolled = allStudents.length;
+            var marks = allStudents.map(function(s) { return studentMarks[s.name][subject]; });
+            var sat = marks.filter(function(m) { return m !== null; });
+            var absent = enrolled - sat.length;
+            var counts = { A: 0, B: 0, C: 0, D: 0, F: 0 };
+            sat.forEach(function(m) { counts[marksToGrade(m)]++; });
+            var avgMarks = sat.length
+                ? Math.round(sat.reduce(function(a, b) { return a + b; }, 0) / sat.length * 10) / 10
+                : null;
+            var pass = counts.A + counts.B + counts.C;
+            var passRate = sat.length ? Math.round(pass / sat.length * 100) : null;
+            return { subject: subject, enrolled: enrolled, sat: sat.length, absent: absent,
+                     counts: counts, avgMarks: avgMarks, passRate: passRate };
+        });
+
+        // Rank by avg marks descending (best first), nulls last
+        subjectStats.sort(function(a, b) {
+            if (a.avgMarks === null && b.avgMarks === null) return 0;
+            if (a.avgMarks === null) return 1;
+            if (b.avgMarks === null) return -1;
+            return b.avgMarks - a.avgMarks;
+        });
+
+        var html = '<thead><tr>';
+        html += '<th>Rank</th><th>Subject</th><th>Enrolled</th><th>Sat</th><th>Absent</th>';
+        html += '<th class="grade-A">A</th><th class="grade-B">B</th><th class="grade-C">C</th>';
+        html += '<th class="grade-D">D</th><th class="grade-F">F</th>';
+        html += '<th>Avg Marks</th><th>Pass %</th>';
+        html += '</tr></thead><tbody>';
+
+        // Show banner for subject teachers
+        var bannerEl = document.getElementById('my-subject-banner');
+        bannerEl.innerHTML = '';
+        if (subjectFilter) {
+            var myStats = subjectStats.find(function(s) { return s.subject === subjectFilter; });
+            if (myStats && myStats.avgMarks !== null) {
+                var myRankNum = subjectStats.filter(function(s) { return s.avgMarks !== null; })
+                    .findIndex(function(s) { return s.subject === subjectFilter; }) + 1;
+                var total = subjectStats.filter(function(s) { return s.avgMarks !== null; }).length;
+                var medalClass = myRankNum === 1 ? '' : myRankNum === 2 ? 'rank-silver' : myRankNum === 3 ? 'rank-bronze' : 'rank-other';
+                bannerEl.innerHTML =
+                    '<div class="my-subject-banner">' +
+                    '<div class="banner-rank ' + medalClass + '">' + myRankNum + '</div>' +
+                    '<div><strong>' + subjectFilter + '</strong> is ranked <strong>#' + myRankNum + ' out of ' + total + '</strong> subjects' +
+                    ' &nbsp;|&nbsp; Avg: <strong>' + myStats.avgMarks + '</strong>' +
+                    ' &nbsp;|&nbsp; Pass Rate: <strong>' + myStats.passRate + '%</strong></div>' +
+                    '</div>';
+            }
+        }
+
+        var rank = 1;
+        subjectStats.forEach(function(s) {
+            var isMySubject = subjectFilter && s.subject === subjectFilter;
+            var passClass = s.passRate === null ? '' : s.passRate >= 70 ? 'pass-good' : s.passRate >= 40 ? 'pass-warn' : 'pass-bad';
+            var rankBadge = s.avgMarks !== null ? rank++ : '—';
+            var rankClass = rankBadge === 1 ? 'rank-1' : rankBadge === 2 ? 'rank-2' : rankBadge === 3 ? 'rank-3' : 'rank-other';
+
+            html += '<tr' + (isMySubject ? ' class="my-subject-row"' : '') + '>';
+            html += '<td><span class="rank-badge ' + rankClass + '">' + rankBadge + '</span></td>';
+            html += '<td>' + s.subject + (isMySubject ? ' ⬅' : '') + '</td>';
+            html += '<td>' + s.enrolled + '</td>';
+            html += '<td>' + s.sat + '</td>';
+            html += '<td>' + (s.absent > 0 ? '<span style="color:#c62828;">' + s.absent + '</span>' : '0') + '</td>';
+            html += '<td class="grade-A">' + s.counts.A + '</td>';
+            html += '<td class="grade-B">' + s.counts.B + '</td>';
+            html += '<td class="grade-C">' + s.counts.C + '</td>';
+            html += '<td class="grade-D">' + s.counts.D + '</td>';
+            html += '<td class="grade-F">' + s.counts.F + '</td>';
+            html += '<td>' + (s.avgMarks !== null ? s.avgMarks : '<span style="color:#bbb;">—</span>') + '</td>';
+            html += '<td class="' + passClass + '">' + (s.passRate !== null ? s.passRate + '%' : '—') + '</td>';
+            html += '</tr>';
+        });
+
+        html += '</tbody>';
+        document.getElementById('subject-table').innerHTML = html;
     }
 </script>
 <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("service-worker.js");}</script>
