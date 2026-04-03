@@ -192,14 +192,46 @@
                     subjectGrades[record.subject][examType] = grade;
                 });
 
+                // Helper: render two cells (Marks | Grade)
+                function examCells(g, cellClass) {
+                    cellClass = cellClass || 'final-grade';
+                    if (g === undefined || g === null || g === '') {
+                        return '<td><span class="no-grade">—</span></td><td><span class="no-grade">—</span></td>';
+                    }
+                    var isNum = typeof g === 'number' || (typeof g === 'string' && !isNaN(g) && g !== '');
+                    var marks = isNum ? parseFloat(g) : null;
+                    var letter = isNum ? marksToGrade(marks) : String(g).toUpperCase();
+                    var marksCell = isNum ? '<td style="font-weight:bold;">' + marks + '</td>' : '<td><span class="no-grade">—</span></td>';
+                    return marksCell + '<td class="' + cellClass + '">' + letter + '</td>';
+                }
+
+                // Helper: term average from two exam keys
+                function termAvg(eg, k1, k2) {
+                    var vals = [eg[k1], eg[k2]].filter(function(v) {
+                        return v !== undefined && v !== null && v !== '' &&
+                               (typeof v === 'number' || (typeof v === 'string' && !isNaN(v) && v !== ''));
+                    }).map(function(v) { return parseFloat(v); });
+                    if (vals.length === 0) return null;
+                    return Math.round((vals.reduce(function(s, v) { return s + v; }, 0) / vals.length) * 10) / 10;
+                }
+
                 // Build table
                 let html = '<p style="color:#666; font-size:12px;">Class: ' + label + '</p>';
                 html += '<table class="grades-table"><thead><tr>';
-                html += '<th>Subject</th>';
-                EXAM_TYPES.forEach(function(et) {
-                    html += '<th>' + EXAM_SHORT[et] + '</th>';
+                html += '<th rowspan="2">Subject</th>';
+                html += '<th colspan="2">Mid T1</th>';
+                html += '<th colspan="2">Term 1</th>';
+                html += '<th colspan="2" style="background:#388e3c;">T1 Avg</th>';
+                html += '<th colspan="2">Mid T2</th>';
+                html += '<th colspan="2">Term 2</th>';
+                html += '<th colspan="2" style="background:#388e3c;">T2 Avg</th>';
+                html += '<th rowspan="2">Final</th><th rowspan="2">Pts</th><th rowspan="2">Comment</th>';
+                html += '</tr><tr>';
+                ['','','','','',''].forEach(function() {
+                    html += '<th style="font-size:9px;font-weight:normal;background:#66BB6A;">Marks</th>';
+                    html += '<th style="font-size:9px;font-weight:normal;background:#66BB6A;">Grade</th>';
                 });
-                html += '<th>Final</th><th>Pts</th><th>Comment</th></tr></thead><tbody>';
+                html += '</tr></thead><tbody>';
 
                 const finalPoints = [];
 
@@ -220,22 +252,18 @@
                         finalPoints.push(finalPts);
                     }
 
+                    var avg1 = termAvg(examGrades, 'Mid Term 1', 'Terminal 1');
+                    var avg2 = termAvg(examGrades, 'Mid Term 2', 'Terminal 2');
                     var comment = finalGrade ? gradeToComment(finalGrade) : '';
+
                     html += '<tr>';
                     html += '<td>' + subject + '</td>';
-                    EXAM_TYPES.forEach(function(et) {
-                        const g = examGrades[et];
-                        if (!g && g !== 0) {
-                            html += '<td><span class="no-grade">—</span></td>';
-                        } else {
-                            var letter = (typeof g === 'number' || (typeof g === 'string' && !isNaN(g) && g !== ''))
-                                ? marksToGrade(parseFloat(g)) : String(g).toUpperCase();
-                            var display = (typeof g === 'number' || (typeof g === 'string' && !isNaN(g) && g !== ''))
-                                ? g + ' <span style="color:#888;font-size:9px;">(' + letter + ')</span>'
-                                : '<strong>' + g + '</strong>';
-                            html += '<td>' + display + '</td>';
-                        }
-                    });
+                    html += examCells(examGrades['Mid Term 1']);
+                    html += examCells(examGrades['Terminal 1']);
+                    html += examCells(avg1, 'final-grade');
+                    html += examCells(examGrades['Mid Term 2']);
+                    html += examCells(examGrades['Terminal 2']);
+                    html += examCells(avg2, 'final-grade');
                     html += '<td class="final-grade">' + (finalGrade || '<span class="no-grade">—</span>') + '</td>';
                     html += '<td>' + (finalPts !== '' ? finalPts : '<span class="no-grade">—</span>') + '</td>';
                     html += '<td style="font-size:10px;color:#555;">' + (comment || '<span class="no-grade">—</span>') + '</td>';
