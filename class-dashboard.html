@@ -35,7 +35,7 @@
 <script src="firebase-firestore-compat.js"></script>
 <script src="firebase.js"></script>
 <script src="translations.js"></script>
-<script src="script.js?v=3"></script>
+<script src="script.js?v=4"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const role = checkAuth();
@@ -70,7 +70,11 @@
 
         loadTeacherFromFirestore(phone)
             .then(function(freshTeacher) {
-                if (!freshTeacher) { goTo('index.html'); return; }
+                if (!freshTeacher) {
+                    // Only redirect if we have no cached data at all
+                    if (!teacher) { goTo('index.html'); }
+                    return;
+                }
                 localStorage.setItem('teacherData', JSON.stringify(freshTeacher));
                 if (!teacher) {
                     initWithTeacher(freshTeacher);

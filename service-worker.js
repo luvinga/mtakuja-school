@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mtakuja-app-v7';
+const CACHE_NAME = 'mtakuja-app-v8';
 
 // Only cache static assets — never HTML files
 // HTML files always load fresh so updates are instant

@@ -209,6 +209,8 @@ function calculateDivision(pointsArray) {
 let grades = {};
 
 function saveGrades() {
+    // Always build fresh from DOM
+    grades = {};
     const inputs = document.querySelectorAll('#grades-list input.grade-input');
     const studentNames = Array.from(document.querySelectorAll('#grades-list .student-name')).map(el => el.textContent);
     studentNames.forEach((student, index) => {
@@ -216,12 +218,24 @@ function saveGrades() {
             grades[student] = parseFloat(inputs[index].value.trim());
         }
     });
+
+    if (Object.keys(grades).length === 0) {
+        alert('No grades entered. Please enter at least one grade before saving.');
+        return;
+    }
+
     const date = new Date().toISOString().split('T')[0];
     const cls = getSelectedClass();
     const stream = getSelectedStream();
     const subject = document.getElementById('subject-select') ? document.getElementById('subject-select').value : '';
     const examTypeEl = document.getElementById('exam-type-select');
     const examType = examTypeEl ? examTypeEl.value : '';
+
+    if (!cls || !subject || !examType) {
+        alert('Missing class, subject or exam type. Please go back and select a class first.');
+        return;
+    }
+
     const record = {
         date,
         class: cls,
