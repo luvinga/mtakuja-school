@@ -158,10 +158,31 @@ function saveAttendance() {
 
 // ─── Grade Helpers (Tanzania NECTA) ──────────────────────────────────────────
 
-// Grade letter to points (A=1 best, F=5 worst)
+// Numeric marks (0-100) → grade letter
+function marksToGrade(marks) {
+    var m = parseFloat(marks);
+    if (isNaN(m)) return '';
+    if (m >= 75) return 'A';
+    if (m >= 65) return 'B';
+    if (m >= 45) return 'C';
+    if (m >= 30) return 'D';
+    return 'F';
+}
+
+// Grade letter → comment
+function gradeToComment(grade) {
+    var map = { 'A': 'Excellent', 'B': 'Very Good', 'C': 'Good', 'D': 'Satisfactory', 'F': 'Fail' };
+    return map[String(grade).toUpperCase()] || '';
+}
+
+// Grade letter or numeric mark → NECTA points (A=1 best, F=5 worst)
 function gradeToPoints(grade) {
-    const map = { 'A': 1, 'B': 2, 'C': 3, 'D': 4, 'F': 5 };
-    return map[grade.toUpperCase()] || 5;
+    // If it's a numeric mark, convert to letter first
+    if (typeof grade === 'number' || (typeof grade === 'string' && grade !== '' && !isNaN(grade))) {
+        grade = marksToGrade(parseFloat(grade));
+    }
+    var map = { 'A': 1, 'B': 2, 'C': 3, 'D': 4, 'F': 5 };
+    return map[String(grade).toUpperCase()] || 5;
 }
 
 // Average points back to grade letter
@@ -188,10 +209,12 @@ function calculateDivision(pointsArray) {
 let grades = {};
 
 function saveGrades() {
-    const selects = document.querySelectorAll('#grades-list select.grade-select');
+    const inputs = document.querySelectorAll('#grades-list input.grade-input');
     const studentNames = Array.from(document.querySelectorAll('#grades-list .student-name')).map(el => el.textContent);
     studentNames.forEach((student, index) => {
-        if (selects[index]) grades[student] = selects[index].value;
+        if (inputs[index] && inputs[index].value.trim() !== '') {
+            grades[student] = parseFloat(inputs[index].value.trim());
+        }
     });
     const date = new Date().toISOString().split('T')[0];
     const cls = getSelectedClass();

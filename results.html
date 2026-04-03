@@ -371,7 +371,7 @@
                     var pointsList = [];
                     EXAM_TYPES.forEach(function(et) {
                         var g = examGrades[et];
-                        if (g) pointsList.push(gradeToPoints(g));
+                        if (g !== undefined && g !== null && g !== '') pointsList.push(gradeToPoints(g));
                     });
 
                     var finalGrade = '';
@@ -398,19 +398,30 @@
                 EXAM_TYPES.forEach(function(et) {
                     html += '<th>' + EXAM_SHORT[et] + '</th>';
                 });
-                html += '<th>Final</th><th>Pts</th><th>Teacher</th><th>Contact</th></tr></thead><tbody>';
+                html += '<th>Final</th><th>Pts</th><th>Comment</th><th>Teacher</th><th>Contact</th></tr></thead><tbody>';
 
                 tableRows.forEach(function(row) {
                     html += '<tr>';
                     html += '<td>' + row.subject + '</td>';
                     EXAM_TYPES.forEach(function(et) {
                         var g = row.examGrades[et];
-                        html += '<td>' + (g ? '<strong>' + g + '</strong>' : '<span class="no-grade">—</span>') + '</td>';
+                        if (!g && g !== 0) {
+                            html += '<td><span class="no-grade">—</span></td>';
+                        } else {
+                            var letter = (typeof g === 'number' || (typeof g === 'string' && !isNaN(g) && g !== ''))
+                                ? marksToGrade(parseFloat(g)) : String(g).toUpperCase();
+                            var display = (typeof g === 'number' || (typeof g === 'string' && !isNaN(g) && g !== ''))
+                                ? g + ' <span style="color:#888;font-size:10px;">(' + letter + ')</span>'
+                                : '<strong>' + g + '</strong>';
+                            html += '<td>' + display + '</td>';
+                        }
                     });
+                    var comment = row.finalGrade ? gradeToComment(row.finalGrade) : '';
                     html += '<td class="final-grade-cell">' +
                         (row.finalGrade || '<span class="no-grade">—</span>') + '</td>';
                     html += '<td>' +
                         (row.finalPts !== '' ? row.finalPts : '<span class="no-grade">—</span>') + '</td>';
+                    html += '<td style="font-size:10px;color:#555;">' + (comment || '<span class="no-grade">—</span>') + '</td>';
                     html += '<td>' + (row.teacher ? row.teacher.name : '<span class="no-grade">—</span>') + '</td>';
                     html += '<td>' + (row.teacher ? row.teacher.phone : '<span class="no-grade">—</span>') + '</td>';
                     html += '</tr>';

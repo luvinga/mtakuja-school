@@ -9,14 +9,6 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-        .grade-select {
-            padding: 6px 8px;
-            border-radius: 8px;
-            border: 1px solid #ccc;
-            font-size: 14px;
-            background: #fff;
-            cursor: pointer;
-        }
         .selector-row {
             margin-bottom: 10px;
         }
@@ -31,6 +23,34 @@
             border: 1px solid #ccc;
             font-size: 14px;
         }
+        .grade-cell {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .grade-input {
+            width: 70px;
+            padding: 6px 8px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            font-size: 14px;
+            text-align: center;
+        }
+        .grade-input:focus {
+            outline: none;
+            border-color: #43a047;
+        }
+        .grade-badge {
+            font-weight: bold;
+            font-size: 15px;
+            min-width: 28px;
+            text-align: center;
+        }
+        .grade-A { color: #1b5e20; }
+        .grade-B { color: #2e7d32; }
+        .grade-C { color: #f57c00; }
+        .grade-D { color: #e65100; }
+        .grade-F { color: #c62828; }
     </style>
 </head>
 <body>
@@ -142,17 +162,37 @@
             nameSpan.className = 'student-name';
             nameSpan.textContent = student.name;
 
-            const gradeSelect = document.createElement('select');
-            gradeSelect.className = 'grade-select';
-            ['', 'A', 'B', 'C', 'D', 'F'].forEach(function(g) {
-                const opt = document.createElement('option');
-                opt.value = g;
-                opt.textContent = g || '— Grade —';
-                gradeSelect.appendChild(opt);
+            const gradeCell = document.createElement('div');
+            gradeCell.className = 'grade-cell';
+
+            const input = document.createElement('input');
+            input.type = 'number';
+            input.className = 'grade-input';
+            input.min = '0';
+            input.max = '100';
+            input.placeholder = '0–100';
+
+            const badge = document.createElement('span');
+            badge.className = 'grade-badge';
+            badge.textContent = '—';
+
+            input.addEventListener('input', function() {
+                var val = this.value.trim();
+                if (val === '' || isNaN(val)) {
+                    badge.textContent = '—';
+                    badge.className = 'grade-badge';
+                } else {
+                    var g = marksToGrade(parseFloat(val));
+                    badge.textContent = g;
+                    badge.className = 'grade-badge grade-' + g;
+                }
             });
 
+            gradeCell.appendChild(input);
+            gradeCell.appendChild(badge);
+
             div.appendChild(nameSpan);
-            div.appendChild(gradeSelect);
+            div.appendChild(gradeCell);
             list.appendChild(div);
         });
     }

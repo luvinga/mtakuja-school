@@ -129,7 +129,15 @@
                         studentNames.forEach(function(student) {
                             const p = document.createElement('p');
                             p.className = 'grade-entry';
-                            p.innerHTML = student + ': <strong>' + grds[student] + '</strong>';
+                            var val = grds[student];
+                            var display;
+                            if (typeof val === 'number' || (typeof val === 'string' && val !== '' && !isNaN(val))) {
+                                var letter = marksToGrade(parseFloat(val));
+                                display = val + ' <span style="color:#888;">(' + letter + ' — ' + gradeToComment(letter) + ')</span>';
+                            } else {
+                                display = val;
+                            }
+                            p.innerHTML = student + ': <strong>' + display + '</strong>';
                             card.appendChild(p);
                         });
 
