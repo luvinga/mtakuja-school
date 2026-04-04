@@ -132,6 +132,87 @@
             color: #888;
             margin-bottom: 6px;
         }
+        .edit-btn {
+            background: #1976D2;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            min-width: 50px;
+        }
+        .edit-btn:hover { background: #1565C0; }
+        /* Inline edit panel */
+        .edit-panel {
+            background: #f0f7f0;
+            border: 1px solid #a5d6a7;
+            border-radius: 10px;
+            padding: 14px;
+            margin: 6px 0 10px 0;
+        }
+        .edit-panel label {
+            display: block;
+            font-weight: bold;
+            font-size: 12px;
+            color: #444;
+            margin-top: 10px;
+            margin-bottom: 4px;
+        }
+        .edit-panel input[type="text"],
+        .edit-panel select {
+            width: 100%;
+            padding: 7px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            font-size: 13px;
+            box-sizing: border-box;
+        }
+        .edit-panel .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 4px;
+        }
+        .edit-panel .checkbox-group label {
+            font-weight: normal;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 0;
+        }
+        .edit-panel .ct-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 4px;
+        }
+        .edit-panel .ct-row select { flex: 1; min-width: 110px; }
+        .edit-panel .save-edit-btn {
+            margin-top: 12px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            width: 100%;
+        }
+        .edit-panel .cancel-edit-btn {
+            margin-top: 6px;
+            background: #888;
+            color: white;
+            border: none;
+            padding: 6px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            width: 100%;
+        }
+        .edit-status { font-size: 12px; margin-top: 6px; }
+        .edit-status.ok  { color: #2e7d32; }
+        .edit-status.err { color: #c62828; }
     </style>
 </head>
 <body>
@@ -273,7 +354,7 @@
 <script src="firebase-firestore-compat.js"></script>
 <script src="firebase.js"></script>
 <script src="translations.js"></script>
-<script src="script.js?v=4"></script>
+<script src="script.js?v=6"></script>
 <script>
     // ── Auth Guard ──────────────────────────────────────────────────────────────
     // ── Compress image to base64 (max 200x200, JPEG quality 0.7) ─────────────────
@@ -473,6 +554,10 @@
 
         filtered.forEach(function(docSnap) {
             const t = docSnap.data();
+
+            // Wrapper holds both the list-item row and the collapsible edit panel
+            const wrapper = document.createElement('div');
+
             const item = document.createElement('div');
             item.className = 'list-item';
 
@@ -482,16 +567,21 @@
             strong.textContent = t.name + (t.role === 'admin' ? ' (Admin)' : '');
             const small = document.createElement('small');
             small.textContent = t.phone + (t.subject ? ' — ' + t.subject : '') +
-                (t.classTeacher ? ' | Class: ' + t.classTeacher.form + (t.classTeacher.stream ? ' ' + t.classTeacher.stream : '') : '');
+                (t.classTeacher ? ' | Class Teacher: ' + t.classTeacher.form + (t.classTeacher.stream ? ' ' + t.classTeacher.stream : '') : '');
             info.appendChild(strong);
             info.appendChild(small);
 
             const btnGroup = document.createElement('div');
             btnGroup.className = 'btn-group';
 
+            const editBtn = document.createElement('button');
+            editBtn.className = 'edit-btn';
+            editBtn.textContent = 'Edit';
+            editBtn.onclick = function() { toggleEditPanel(t, wrapper, editBtn); };
+
             const resetBtn = document.createElement('button');
             resetBtn.className = 'reset-btn';
-            resetBtn.textContent = 'Reset Password';
+            resetBtn.textContent = 'Reset Pwd';
             resetBtn.onclick = function() { resetTeacherPassword(t.phone, t.name); };
 
             const delBtn = document.createElement('button');
@@ -499,11 +589,13 @@
             delBtn.textContent = 'Delete';
             delBtn.onclick = function() { deleteTeacher(t.phone, t.name); };
 
+            btnGroup.appendChild(editBtn);
             btnGroup.appendChild(resetBtn);
             btnGroup.appendChild(delBtn);
             item.appendChild(info);
             item.appendChild(btnGroup);
-            container.appendChild(item);
+            wrapper.appendChild(item);
+            container.appendChild(wrapper);
         });
     }
 
@@ -706,6 +798,110 @@
                 alert('Password reset. User will be asked to set a new password on next login.');
             })
             .catch(function(err) { alert('Error resetting password: ' + err.message); });
+    }
+
+    // ── Edit Teacher (inline panel) ─────────────────────────────────────────────
+    function toggleEditPanel(t, wrapper, editBtn) {
+        // If panel already open, close it
+        var existing = wrapper.querySelector('.edit-panel');
+        if (existing) {
+            existing.remove();
+            editBtn.textContent = 'Edit';
+            return;
+        }
+        editBtn.textContent = 'Cancel';
+
+        var panel = document.createElement('div');
+        panel.className = 'edit-panel';
+
+        // Subject
+        panel.innerHTML +=
+            '<label>Subject</label>' +
+            '<input type="text" id="ep-subject-' + t.phone + '" value="' + (t.subject || '') + '" placeholder="e.g. Mathematics">';
+
+        // Forms taught
+        var formsHtml = '<label>Forms Taught</label><div class="checkbox-group">';
+        ['Form 1','Form 2','Form 3','Form 4'].forEach(function(f) {
+            var checked = (t.forms || []).includes(f) ? 'checked' : '';
+            formsHtml += '<label><input type="checkbox" class="ep-form-' + t.phone + '" value="' + f + '" ' + checked + '> ' + f + '</label>';
+        });
+        formsHtml += '</div>';
+        panel.innerHTML += formsHtml;
+
+        // Class teacher assignment
+        var ctForm   = t.classTeacher ? (t.classTeacher.form   || '') : '';
+        var ctStream = t.classTeacher ? (t.classTeacher.stream || '') : '';
+        panel.innerHTML +=
+            '<label>Class Teacher Assignment <small style="font-weight:normal;color:#888;">(leave blank to remove)</small></label>' +
+            '<div class="ct-row">' +
+            '<select id="ep-ct-form-' + t.phone + '">' +
+            '<option value="">— No assignment —</option>' +
+            ['Form 1','Form 2','Form 3','Form 4'].map(function(f) {
+                return '<option value="' + f + '"' + (ctForm === f ? ' selected' : '') + '>' + f + '</option>';
+            }).join('') +
+            '</select>' +
+            '<select id="ep-ct-stream-' + t.phone + '">' +
+            '<option value="">— No stream —</option>' +
+            ['Science','Business','Arts'].map(function(s) {
+                return '<option value="' + s + '"' + (ctStream === s ? ' selected' : '') + '>' + s + '</option>';
+            }).join('') +
+            '</select>' +
+            '</div>';
+
+        // Role
+        panel.innerHTML +=
+            '<label>Role</label>' +
+            '<select id="ep-role-' + t.phone + '">' +
+            '<option value="teacher"' + (t.role !== 'admin' ? ' selected' : '') + '>Teacher</option>' +
+            '<option value="admin"'   + (t.role === 'admin' ? ' selected' : '') + '>Admin</option>' +
+            '</select>';
+
+        panel.innerHTML += '<div id="ep-status-' + t.phone + '" class="edit-status"></div>';
+
+        var saveBtn = document.createElement('button');
+        saveBtn.className = 'save-edit-btn';
+        saveBtn.textContent = '💾 Save Changes';
+        saveBtn.onclick = function() { saveTeacherEdit(t.phone, wrapper, editBtn); };
+        panel.appendChild(saveBtn);
+
+        var cancelBtn = document.createElement('button');
+        cancelBtn.className = 'cancel-edit-btn';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.onclick = function() { panel.remove(); editBtn.textContent = 'Edit'; };
+        panel.appendChild(cancelBtn);
+
+        wrapper.appendChild(panel);
+    }
+
+    function saveTeacherEdit(phone, wrapper, editBtn) {
+        var statusEl = document.getElementById('ep-status-' + phone);
+        statusEl.textContent = 'Saving...';
+        statusEl.className = 'edit-status';
+
+        var subject = document.getElementById('ep-subject-' + phone).value.trim() || null;
+        var forms   = Array.from(document.querySelectorAll('.ep-form-' + phone + ':checked')).map(function(cb) { return cb.value; });
+        var ctForm  = document.getElementById('ep-ct-form-' + phone).value   || null;
+        var ctStream= document.getElementById('ep-ct-stream-' + phone).value || null;
+        var role    = document.getElementById('ep-role-' + phone).value;
+        var classTeacher = ctForm ? { form: ctForm, stream: ctStream } : null;
+
+        db.collection('teachers').doc(phone).update({
+            subject:      subject,
+            forms:        forms,
+            classTeacher: classTeacher,
+            role:         role
+        }).then(function() {
+            statusEl.textContent = '✅ Saved!';
+            statusEl.className = 'edit-status ok';
+            setTimeout(function() {
+                wrapper.querySelector('.edit-panel').remove();
+                editBtn.textContent = 'Edit';
+                loadTeachersList();
+            }, 800);
+        }).catch(function(err) {
+            statusEl.textContent = 'Error: ' + err.message;
+            statusEl.className = 'edit-status err';
+        });
     }
 </script>
 <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("service-worker.js");}</script>

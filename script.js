@@ -84,14 +84,14 @@ function loadStudentsForClass(form, stream) {
 
 // ─── Subjects ─────────────────────────────────────────────────────────────────
 const classSubjects = {
-    'Form 1': ['Mathematics', 'English', 'Kiswahili', 'Biology', 'Chemistry', 'Physics', 'History', 'Geography', 'Civics', 'Agriculture', 'English Literature'],
-    'Form 2': ['Mathematics', 'English', 'Kiswahili', 'Biology', 'Chemistry', 'Physics', 'History', 'Geography', 'Civics', 'Agriculture', 'English Literature']
+    'Form 1': ['Mathematics', 'English', 'Kiswahili', 'Biology', 'Chemistry', 'Physics', 'History', 'Geography', 'Civics', 'Agriculture'],
+    'Form 2': ['Mathematics', 'English', 'Kiswahili', 'Biology', 'Chemistry', 'Physics', 'History', 'Geography', 'Civics', 'Agriculture']
 };
 
 const streamSubjects = {
-    'Science':  ['Mathematics', 'English', 'Kiswahili', 'Biology', 'Chemistry', 'Physics', 'History', 'Geography', 'Civics'],
-    'Business': ['Mathematics', 'English', 'Kiswahili', 'Biology', 'Book Keeping', 'Commerce', 'History', 'Geography', 'Civics'],
-    'Arts':     ['Mathematics', 'English', 'Kiswahili', 'Biology', 'History', 'Geography', 'Civics']
+    'Science':  ['Mathematics', 'English', 'Kiswahili', 'Biology', 'Chemistry', 'Physics', 'History', 'Geography', 'Civics', 'English Literature'],
+    'Business': ['Mathematics', 'English', 'Kiswahili', 'Biology', 'Book Keeping', 'Commerce', 'History', 'Geography', 'Civics', 'English Literature'],
+    'Arts':     ['Mathematics', 'English', 'Kiswahili', 'Biology', 'History', 'Geography', 'Civics', 'English Literature']
 };
 
 const streamForms = ['Form 3', 'Form 4'];
