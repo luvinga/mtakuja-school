@@ -71,29 +71,53 @@
         .div-3 { color: #f57c00; }
         .div-4 { color: #e65100; }
         .div-0 { color: #c62828; }
-        .print-section {
-            margin-top: 14px;
+        .rank-badge {
+            display: inline-block;
+            width: 22px; height: 22px; line-height: 22px;
+            border-radius: 50%;
+            font-weight: bold; font-size: 11px; text-align: center;
         }
-        .letterhead-print {
-            display: none;
+        .rank-1 { background: #FFD700; color: #333; }
+        .rank-2 { background: #C0C0C0; color: #333; }
+        .rank-3 { background: #CD7F32; color: #fff; }
+        .rank-other { background: #e8f5e9; color: #333; }
+        .section-title {
+            background: linear-gradient(135deg, #1b5e20, #2e7d32);
+            color: #fff;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            margin: 20px 0 10px 0;
         }
+        .best-subject-banner {
+            background: #1b5e20;
+            color: #fff;
+            border-radius: 8px;
+            padding: 9px 14px;
+            font-size: 13px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .best-subject-banner .trophy { font-size: 20px; }
+        .subj-best-row td { background: #e8f5e9 !important; border-left: 4px solid #1b5e20; font-weight: bold; }
+        .print-section { margin-top: 14px; }
+        .letterhead-print { display: none; }
         #results-area { overflow-x: auto; }
         @media print {
             .controls, .back-btn, .print-btn { display: none !important; }
             body { background: white; display: block; padding: 0; }
             .app-container {
-                box-shadow: none;
-                border-radius: 0;
-                border-top: none;
-                max-width: 100%;
-                width: 100%;
-                padding: 10px;
-                min-height: auto;
+                box-shadow: none; border-radius: 0; border-top: none;
+                max-width: 100%; width: 100%; padding: 10px; min-height: auto;
             }
             .letterhead-print { display: block; text-align: center; margin-bottom: 10px; }
             .letterhead-print h2 { color: #1b5e20; font-size: 16px; margin: 0; }
             .letterhead-print p { font-size: 11px; color: #555; margin: 2px 0; }
             .export-table { display: table; font-size: 9px; }
+            .section-title { background: #1b5e20 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             #results-area { overflow-x: visible; }
         }
     </style>
@@ -147,7 +171,7 @@
 <script src="firebase-firestore-compat.js"></script>
 <script src="firebase.js"></script>
 <script src="translations.js"></script>
-<script src="script.js?v=6"></script>
+<script src="script.js?v=7"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         var role = checkAuth();
@@ -165,13 +189,12 @@
     }
 
     function loadResults() {
-        var cls = document.getElementById('cls-select').value;
+        var cls    = document.getElementById('cls-select').value;
         var stream = document.getElementById('stream-select').value || null;
 
         if (!cls) { alert('Please select a class.'); return; }
         if ((cls === 'Form 3' || cls === 'Form 4') && !stream) {
-            alert('Please select a stream for Form 3/4.');
-            return;
+            alert('Please select a stream for Form 3/4.'); return;
         }
 
         var container = document.getElementById('results-area');
@@ -181,20 +204,11 @@
         var label = stream ? cls + ' — ' + stream : cls;
         document.getElementById('print-class-label').textContent = 'Class: ' + label;
 
-        var subjects = [];
-        if (stream) {
-            subjects = streamSubjects[stream] || [];
-        } else {
-            subjects = classSubjects[cls] || [];
-        }
+        var subjects = stream ? (streamSubjects[stream] || []) : (classSubjects[cls] || []);
+        var EXAM_TYPES = ['Mid Term 1', 'Terminal 1', 'Mid Term 2', 'Terminal 2'];
 
-        // Query students and grades in parallel
         var studentsQuery = db.collection('students').where('form', '==', cls);
-        if (stream) {
-            studentsQuery = studentsQuery.where('stream', '==', stream);
-        } else {
-            studentsQuery = studentsQuery.where('stream', '==', null);
-        }
+        studentsQuery = stream ? studentsQuery.where('stream', '==', stream) : studentsQuery.where('stream', '==', null);
 
         Promise.all([
             studentsQuery.get(),
@@ -203,11 +217,8 @@
             var studentSnap = results[0];
             var gradeSnap   = results[1];
 
-            // Build student list sorted by name
             var students = [];
-            studentSnap.forEach(function(doc) {
-                students.push(doc.data().name);
-            });
+            studentSnap.forEach(function(doc) { students.push(doc.data().name); });
             students.sort();
 
             if (students.length === 0) {
@@ -215,77 +226,177 @@
                 return;
             }
 
-            // Build grade records: studentGrades[student][subject][examType] = grade
-            var studentGrades = {};
+            // Build studentMarks[name][subject][examType] = numeric mark — last record wins
+            var studentMarks = {};
             students.forEach(function(name) {
-                studentGrades[name] = {};
-                subjects.forEach(function(sub) {
-                    studentGrades[name][sub] = {};
-                });
+                studentMarks[name] = {};
+                subjects.forEach(function(sub) { studentMarks[name][sub] = {}; });
             });
 
             var gradeDocs = gradeSnap.docs.slice().sort(function(a, b) {
-                var da = a.data().date || '';
-                var db2 = b.data().date || '';
-                return da < db2 ? -1 : da > db2 ? 1 : 0;
+                return (a.data().date || '') < (b.data().date || '') ? -1 : 1;
             });
-
             gradeDocs.forEach(function(doc) {
                 var rec = doc.data();
                 if (!rec.subject || !rec.grades || !rec.examType) return;
                 students.forEach(function(name) {
                     if (rec.grades[name] !== undefined) {
-                        if (!studentGrades[name][rec.subject]) studentGrades[name][rec.subject] = {};
-                        studentGrades[name][rec.subject][rec.examType] = rec.grades[name];
+                        if (!studentMarks[name][rec.subject]) studentMarks[name][rec.subject] = {};
+                        studentMarks[name][rec.subject][rec.examType] = rec.grades[name];
                     }
                 });
             });
 
-            // Build the table
-            var html = '<table class="export-table"><thead><tr>';
-            html += '<th>Student</th>';
-            subjects.forEach(function(sub) {
-                html += '<th>' + sub + '</th>';
-            });
-            html += '<th>Points</th><th>Division</th></tr></thead><tbody>';
-
-            students.forEach(function(name) {
-                html += '<tr><td>' + name + '</td>';
+            // Compute per-student: finalMarks[subject] (avg across all exams), points, division, avgMarks
+            var studentData = students.map(function(name) {
                 var subjectPoints = [];
+                var subjectAvgMarks = {};
+                var totalMarksAll = [], countSubjects = 0;
+
                 subjects.forEach(function(sub) {
-                    var examGrades = studentGrades[name][sub] || {};
-                    var pointsList = [];
-                    ['Mid Term 1', 'Terminal 1', 'Mid Term 2', 'Terminal 2'].forEach(function(et) {
-                        var g = examGrades[et];
-                        if (g) pointsList.push(gradeToPoints(g));
+                    var examData = studentMarks[name][sub] || {};
+                    var vals = [];
+                    EXAM_TYPES.forEach(function(et) {
+                        var v = examData[et];
+                        if (v !== undefined && v !== null && v !== '') {
+                            var n = parseFloat(v);
+                            if (!isNaN(n)) vals.push(n);
+                        }
                     });
-                    if (pointsList.length > 0) {
-                        var avg = pointsList.reduce(function(s, p) { return s + p; }, 0) / pointsList.length;
-                        var finalGrade = pointsToGrade(avg);
-                        var pts = gradeToPoints(finalGrade);
-                        subjectPoints.push(pts);
-                        var cls2 = 'grade-' + finalGrade.toLowerCase();
-                        html += '<td class="' + cls2 + '">' + finalGrade + '</td>';
+                    if (vals.length > 0) {
+                        var avg = vals.reduce(function(a, b) { return a + b; }, 0) / vals.length;
+                        avg = Math.round(avg * 10) / 10;
+                        subjectAvgMarks[sub] = avg;
+                        subjectPoints.push(gradeToPoints(avg));
+                        totalMarksAll.push(avg);
+                        countSubjects++;
                     } else {
-                        html += '<td style="color:#bbb;">—</td>';
+                        subjectAvgMarks[sub] = null;
                     }
                 });
 
+                var totalPts = null, division = null, overallAvg = null;
                 if (subjectPoints.length > 0) {
-                    var division = calculateDivision(subjectPoints);
                     var best7 = subjectPoints.slice().sort(function(a, b) { return a - b; }).slice(0, 7);
-                    var totalPts = best7.reduce(function(s, p) { return s + p; }, 0);
-                    var divClass = 'div-' + (division.replace('Division ', '').replace(' ', '').toLowerCase());
-                    html += '<td>' + totalPts + '</td><td class="' + divClass + '">' + division + '</td>';
-                } else {
-                    html += '<td style="color:#bbb;">—</td><td style="color:#bbb;">—</td>';
+                    totalPts = best7.reduce(function(a, b) { return a + b; }, 0);
+                    division = calculateDivision(subjectPoints);
+                    overallAvg = Math.round(totalMarksAll.reduce(function(a, b) { return a + b; }, 0) / totalMarksAll.length * 10) / 10;
                 }
+                return { name: name, subjectAvgMarks: subjectAvgMarks, totalPts: totalPts, division: division, overallAvg: overallAvg };
+            });
+
+            // Sort by points asc (lower = better), tiebreak by overallAvg desc
+            studentData.sort(function(a, b) {
+                if (a.totalPts === null && b.totalPts === null) return 0;
+                if (a.totalPts === null) return 1;
+                if (b.totalPts === null) return -1;
+                if (a.totalPts !== b.totalPts) return a.totalPts - b.totalPts;
+                return (b.overallAvg || 0) - (a.overallAvg || 0);
+            });
+
+            // ── Student ranking table ─────────────────────────────────────────────
+            var html = '<div class="section-title">🏆 Student Ranking</div>';
+            html += '<div style="overflow-x:auto;"><table class="export-table"><thead><tr>';
+            html += '<th>Rank</th><th>Student</th>';
+            subjects.forEach(function(sub) {
+                // Abbreviate long subject names for column headers
+                var short = sub.length > 8 ? sub.substring(0, 8) + '.' : sub;
+                html += '<th title="' + sub + '">' + short + '</th>';
+            });
+            html += '<th>Avg</th><th>Pts</th><th>Division</th></tr></thead><tbody>';
+
+            var rank = 1;
+            studentData.forEach(function(s) {
+                var rankDisplay = s.totalPts !== null ? rank++ : '—';
+                var rankClass = rankDisplay === 1 ? 'rank-1' : rankDisplay === 2 ? 'rank-2' : rankDisplay === 3 ? 'rank-3' : 'rank-other';
+                var divClass = '';
+                if (s.division === 'Division I')        divClass = 'div-1';
+                else if (s.division === 'Division II')  divClass = 'div-2';
+                else if (s.division === 'Division III') divClass = 'div-3';
+                else if (s.division === 'Division IV')  divClass = 'div-4';
+                else if (s.division === 'Division 0')   divClass = 'div-0';
+
+                html += '<tr>';
+                html += '<td><span class="rank-badge ' + rankClass + '">' + rankDisplay + '</span></td>';
+                html += '<td>' + s.name + '</td>';
+                subjects.forEach(function(sub) {
+                    var m = s.subjectAvgMarks[sub];
+                    if (m === null) {
+                        html += '<td style="color:#bbb;">—</td>';
+                    } else {
+                        var letter = marksToGrade(m);
+                        var gc = 'grade-' + letter.toLowerCase();
+                        html += '<td><span style="font-weight:bold;">' + m + '</span><br><span class="' + gc + '" style="font-size:9px;">' + letter + '</span></td>';
+                    }
+                });
+                html += '<td style="font-weight:bold;">' + (s.overallAvg !== null ? s.overallAvg : '—') + '</td>';
+                html += '<td>' + (s.totalPts !== null ? s.totalPts : '—') + '</td>';
+                html += '<td class="' + divClass + '">' + (s.division || '—') + '</td>';
                 html += '</tr>';
             });
+            html += '</tbody></table></div>';
 
-            html += '</tbody></table>';
+            // ── Subject performance ranking ───────────────────────────────────────
+            var subjectStats = subjects.map(function(sub) {
+                var allMarks = studentData.map(function(s) { return s.subjectAvgMarks[sub]; }).filter(function(v) { return v !== null; });
+                var counts = { A: 0, B: 0, C: 0, D: 0, F: 0 };
+                allMarks.forEach(function(m) { counts[marksToGrade(m)]++; });
+                var avgMarks = allMarks.length ? Math.round(allMarks.reduce(function(a, b) { return a + b; }, 0) / allMarks.length * 10) / 10 : null;
+                var pass = counts.A + counts.B + counts.C;
+                var passRate = allMarks.length ? Math.round(pass / allMarks.length * 100) : null;
+                return { subject: sub, sat: allMarks.length, absent: students.length - allMarks.length, counts: counts, avgMarks: avgMarks, passRate: passRate };
+            });
+
+            // Sort best → worst by avg marks
+            subjectStats.sort(function(a, b) {
+                if (a.avgMarks === null && b.avgMarks === null) return 0;
+                if (a.avgMarks === null) return 1;
+                if (b.avgMarks === null) return -1;
+                return b.avgMarks - a.avgMarks;
+            });
+
+            var bestSubject = subjectStats.find(function(s) { return s.avgMarks !== null; });
+
+            html += '<div class="section-title">📚 Subject Performance Ranking</div>';
+            if (bestSubject) {
+                html += '<div class="best-subject-banner"><span class="trophy">🥇</span>' +
+                    '<span>Best Subject: <strong>' + bestSubject.subject + '</strong>' +
+                    ' &nbsp;|&nbsp; Avg Marks: <strong>' + bestSubject.avgMarks + '</strong>' +
+                    ' &nbsp;|&nbsp; Pass Rate: <strong>' + bestSubject.passRate + '%</strong></span></div>';
+            }
+
+            html += '<div style="overflow-x:auto;"><table class="export-table"><thead><tr>';
+            html += '<th>Rank</th><th>Subject</th><th>Sat</th><th>Absent</th>';
+            html += '<th style="color:#a5d6a7;">A</th><th style="color:#c8e6c9;">B</th><th style="color:#ffe082;">C</th>';
+            html += '<th style="color:#ffcc80;">D</th><th style="color:#ef9a9a;">F</th>';
+            html += '<th>Avg Marks</th><th>Pass %</th></tr></thead><tbody>';
+
+            var sRank = 1;
+            subjectStats.forEach(function(s) {
+                var rankNum = s.avgMarks !== null ? sRank++ : '—';
+                var rankClass = rankNum === 1 ? 'rank-1' : rankNum === 2 ? 'rank-2' : rankNum === 3 ? 'rank-3' : 'rank-other';
+                var passClass = s.passRate === null ? '' : s.passRate >= 70 ? 'div-1' : s.passRate >= 40 ? 'div-3' : 'div-0';
+                var isBest = bestSubject && s.subject === bestSubject.subject;
+
+                html += '<tr' + (isBest ? ' class="subj-best-row"' : '') + '>';
+                html += '<td><span class="rank-badge ' + rankClass + '">' + rankNum + '</span></td>';
+                html += '<td>' + s.subject + (isBest ? ' 🥇' : '') + '</td>';
+                html += '<td>' + s.sat + '</td>';
+                html += '<td>' + (s.absent > 0 ? '<span style="color:#c62828;">' + s.absent + '</span>' : '0') + '</td>';
+                html += '<td class="grade-a">' + s.counts.A + '</td>';
+                html += '<td class="grade-b">' + s.counts.B + '</td>';
+                html += '<td class="grade-c">' + s.counts.C + '</td>';
+                html += '<td class="grade-d">' + s.counts.D + '</td>';
+                html += '<td class="grade-f">' + s.counts.F + '</td>';
+                html += '<td style="font-weight:bold;">' + (s.avgMarks !== null ? s.avgMarks : '—') + '</td>';
+                html += '<td class="' + passClass + '">' + (s.passRate !== null ? s.passRate + '%' : '—') + '</td>';
+                html += '</tr>';
+            });
+            html += '</tbody></table></div>';
+
             container.innerHTML = html;
             document.getElementById('print-btn-wrap').style.display = 'block';
+
         }).catch(function(err) {
             container.innerHTML = '<p style="color:red;">Error loading results: ' + err.message + '</p>';
         });
