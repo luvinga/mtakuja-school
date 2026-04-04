@@ -77,7 +77,7 @@
 <script src="firebase-firestore-compat.js"></script>
 <script src="firebase.js"></script>
 <script src="translations.js"></script>
-<script src="script.js?v=7"></script>
+<script src="script.js?v=8"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const cls = getSelectedClass();
@@ -85,6 +85,14 @@
         const stream = getSelectedStream();
         const label = stream ? cls + ' (' + stream + ')' : cls;
         document.getElementById('students-title').textContent = 'Students — ' + label;
+
+        // Only class teachers and admins can view individual student reports
+        var teacher = null;
+        try { teacher = JSON.parse(localStorage.getItem('teacherData')); } catch(e) {}
+        var canViewReports = !teacher || teacher.role === 'admin' ||
+            (teacher.classTeacher &&
+             teacher.classTeacher.form === cls &&
+             (teacher.classTeacher.stream || null) === (stream || null));
 
         loadStudentsForClass(cls, stream || null)
             .then(function(students) {
@@ -126,16 +134,19 @@
                     nameSpan.textContent = student.name;
                     nameSpan.onclick = function() { viewProfile(student.name); };
 
-                    const resultsBtn = document.createElement('button');
-                    resultsBtn.className = 'results-btn';
-                    resultsBtn.textContent = 'Results';
-                    resultsBtn.onclick = function() {
-                        localStorage.setItem('selectedStudent', student.name);
-                        goTo('results.html');
-                    };
-
                     div.appendChild(nameSpan);
-                    div.appendChild(resultsBtn);
+
+                    if (canViewReports) {
+                        const resultsBtn = document.createElement('button');
+                        resultsBtn.className = 'results-btn';
+                        resultsBtn.textContent = 'Results';
+                        resultsBtn.onclick = function() {
+                            localStorage.setItem('selectedStudent', student.name);
+                            goTo('results.html');
+                        };
+                        div.appendChild(resultsBtn);
+                    }
+
                     list.appendChild(div);
                 });
             })

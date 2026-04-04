@@ -259,7 +259,7 @@
 <script src="firebase-firestore-compat.js"></script>
 <script src="firebase.js"></script>
 <script src="translations.js"></script>
-<script src="script.js?v=7"></script>
+<script src="script.js?v=8"></script>
 <script>
     const EXAM_TYPES = ['Mid Term 1', 'Terminal 1', 'Mid Term 2', 'Terminal 2'];
     const EXAM_SHORT = {
@@ -270,7 +270,6 @@
     };
 
     document.addEventListener('DOMContentLoaded', function() {
-        // Determine context: parent view or teacher view
         const role = localStorage.getItem('role');
         let student, cls, stream;
 
@@ -279,10 +278,21 @@
             cls     = localStorage.getItem('studentClass');
             stream  = localStorage.getItem('studentStream') || null;
         } else {
-            // Teacher / admin view — student set via selectedStudent
+            // Access control: only admin or class teacher of this class/stream
+            var teacher = null;
+            try { teacher = JSON.parse(localStorage.getItem('teacherData')); } catch(e) {}
+            var isAdmin       = !teacher || teacher.role === 'admin';
+            cls    = localStorage.getItem('selectedClass');
+            stream = localStorage.getItem('selectedStream') || null;
+            var isClassTeacher = teacher && teacher.classTeacher &&
+                                 teacher.classTeacher.form === cls &&
+                                 (teacher.classTeacher.stream || null) === (stream || null);
+            if (!isAdmin && !isClassTeacher) {
+                document.getElementById('result-content').innerHTML =
+                    '<p style="color:#c62828;text-align:center;padding:20px;">Access denied. Only class teachers and admins can view student reports.</p>';
+                return;
+            }
             student = localStorage.getItem('selectedStudent');
-            cls     = localStorage.getItem('selectedClass');
-            stream  = localStorage.getItem('selectedStream') || null;
         }
 
         if (!student || !cls) {
@@ -323,13 +333,23 @@
             return;
         }
 
-        // Load teachers and grades in parallel
+        // Load teachers, grades and all students in parallel (students needed for ranking)
+        var studentsQuery = db.collection('students').where('form', '==', cls);
+        studentsQuery = stream ? studentsQuery.where('stream', '==', stream) : studentsQuery.where('stream', '==', null);
+
         Promise.all([
             db.collection('teachers').get(),
-            db.collection('grades').where('class', '==', cls).where('stream', '==', stream).get()
+            db.collection('grades').where('class', '==', cls).where('stream', '==', stream).get(),
+            studentsQuery.get()
         ]).then(function(results) {
-                var teacherSnap = results[0];
-                var gradeSnap   = results[1];
+                var teacherSnap  = results[0];
+                var gradeSnap    = results[1];
+                var studentSnap  = results[2];
+
+                // Build list of all student names in this class
+                var allStudentNames = [];
+                studentSnap.forEach(function(doc) { allStudentNames.push(doc.data().name); });
+                allStudentNames.sort();
 
                 // Build subject → teacher map for this form
                 var subjectTeacher = {};
@@ -343,9 +363,10 @@
                     }
                 });
 
-                // Build: subjectGrades[subject][examType] = latest grade string
-                var subjectGrades = {};
-                subjects.forEach(function(s) { subjectGrades[s] = {}; });
+                // Build grade data for ALL students (needed for ranking)
+                // allMarks[studentName][subject][examType] = value
+                var allMarks = {};
+                allStudentNames.forEach(function(n) { allMarks[n] = {}; });
 
                 var docs = gradeSnap.docs.slice().sort(function(a, b) {
                     var da = a.data().date || '';
@@ -355,12 +376,71 @@
 
                 docs.forEach(function(doc) {
                     var record = doc.data();
-                    if (!record.subject || !record.grades || record.grades[student] === undefined) return;
-                    var examType = record.examType || '';
-                    if (!examType) return;
-                    if (!subjectGrades[record.subject]) subjectGrades[record.subject] = {};
-                    subjectGrades[record.subject][examType] = record.grades[student];
+                    if (!record.subject || !record.grades || !record.examType) return;
+                    allStudentNames.forEach(function(n) {
+                        if (record.grades[n] !== undefined) {
+                            if (!allMarks[n][record.subject]) allMarks[n][record.subject] = {};
+                            allMarks[n][record.subject][record.examType] = record.grades[n];
+                        }
+                    });
                 });
+
+                // Compute total points for each student (for ranking)
+                function computePoints(name) {
+                    var pts = [];
+                    subjects.forEach(function(sub) {
+                        var examData = allMarks[name][sub] || {};
+                        var vals = [];
+                        EXAM_TYPES.forEach(function(et) {
+                            var v = examData[et];
+                            if (v !== undefined && v !== null && v !== '') {
+                                var n = parseFloat(v);
+                                if (!isNaN(n)) vals.push(n);
+                            }
+                        });
+                        if (vals.length > 0) {
+                            var avg = vals.reduce(function(a, b) { return a + b; }, 0) / vals.length;
+                            pts.push(gradeToPoints(avg));
+                        }
+                    });
+                    if (pts.length === 0) return null;
+                    var best7 = pts.slice().sort(function(a, b) { return a - b; }).slice(0, 7);
+                    return best7.reduce(function(a, b) { return a + b; }, 0);
+                }
+
+                // Rank all students: lower points = better; tiebreak by avg marks
+                var rankingData = allStudentNames.map(function(n) {
+                    var pts = computePoints(n);
+                    var allVals = [];
+                    subjects.forEach(function(sub) {
+                        var examData = allMarks[n][sub] || {};
+                        EXAM_TYPES.forEach(function(et) {
+                            var v = examData[et];
+                            if (v !== undefined && v !== null && v !== '') {
+                                var num = parseFloat(v);
+                                if (!isNaN(num)) allVals.push(num);
+                            }
+                        });
+                    });
+                    var avgMarks = allVals.length ? allVals.reduce(function(a, b) { return a + b; }, 0) / allVals.length : null;
+                    return { name: n, pts: pts, avgMarks: avgMarks };
+                });
+                rankingData.sort(function(a, b) {
+                    if (a.pts === null && b.pts === null) return 0;
+                    if (a.pts === null) return 1;
+                    if (b.pts === null) return -1;
+                    if (a.pts !== b.pts) return a.pts - b.pts;
+                    return (b.avgMarks || 0) - (a.avgMarks || 0);
+                });
+                var studentPosition = null;
+                var totalRanked = rankingData.filter(function(r) { return r.pts !== null; }).length;
+                for (var ri = 0; ri < rankingData.length; ri++) {
+                    if (rankingData[ri].name === student) { studentPosition = ri + 1; break; }
+                }
+
+                // Extract this student's grades
+                var subjectGrades = {};
+                subjects.forEach(function(s) { subjectGrades[s] = allMarks[student][s] || {}; });
 
                 // Compute final grades
                 var finalPoints = [];
@@ -464,9 +544,16 @@
                     var division = calculateDivision(finalPoints);
                     var best7 = finalPoints.slice().sort(function(a, b) { return a - b; }).slice(0, 7);
                     var totalPts = best7.reduce(function(s, p) { return s + p; }, 0);
+                    var positionLabel = studentPosition !== null
+                        ? studentPosition + ' / ' + allStudentNames.length
+                        : '—';
+                    var positionOrdinal = studentPosition === 1 ? '1st' : studentPosition === 2 ? '2nd' : studentPosition === 3 ? '3rd' : (studentPosition + 'th');
                     html += '<div class="summary-box">';
                     html += '<p>Subjects Sat: <strong>' + finalPoints.length + '</strong></p>';
                     html += '<p>Total Points (Best 7): <strong>' + totalPts + '</strong></p>';
+                    if (studentPosition !== null) {
+                        html += '<p>Position: <strong style="font-size:16px;color:#1b5e20;">' + positionOrdinal + ' out of ' + allStudentNames.length + ' students</strong></p>';
+                    }
                     html += '<p class="division-label">' + division + '</p>';
                     html += '</div>';
                 } else {
