@@ -390,7 +390,7 @@
                 division = calculateDivision(pointsList);
                 avgMarks = Math.round(allMarks.reduce(function(a, b) { return a + b; }, 0) / allMarks.length * 10) / 10;
             }
-            return { name: s.name, totalPts: totalPts, division: division, avgMarks: avgMarks, subjectsSat: pointsList.length };
+            return { name: s.name, totalPts: totalPts, division: division, avgMarks: avgMarks, subjectsSat: pointsList.length, subjectMarks: studentMarks[s.name] };
         });
 
         // Sort: by points asc (lower = better in NECTA), tiebreak by avgMarks desc (higher = better)
@@ -405,11 +405,24 @@
         });
 
         var html = '<thead><tr>';
-        html += '<th>Rank</th><th>Student Name</th><th>Subjects Sat</th><th>Avg Marks</th><th>Points (Best 7)</th><th>Division</th>';
+        html += '<th>Rank</th><th>Student Name</th>';
+        viewSubjects.forEach(function(sub) {
+            // Abbreviate subject name for compact header
+            var abbr = sub.replace('Additional Mathematics', 'Add.Math')
+                         .replace('Additional Science', 'Add.Sci')
+                         .replace('English Language', 'Eng.Lang')
+                         .replace('English Literature', 'Eng.Lit')
+                         .replace('Community Development', 'Comm.Dev')
+                         .replace('Information Technology', 'IT')
+                         .replace('Physical Education', 'P.E')
+                         .replace('Commerce and Accounting', 'Commerce');
+            html += '<th style="font-size:10px;white-space:normal;max-width:52px;">' + abbr + '</th>';
+        });
+        html += '<th>Avg</th><th>Pts</th><th>Division</th>';
         html += '</tr></thead><tbody>';
 
         var rank = 1;
-        studentData.forEach(function(s, i) {
+        studentData.forEach(function(s) {
             var rankDisplay = '—', rankClass = 'rank-other';
             if (s.totalPts !== null) {
                 rankDisplay = rank;
@@ -429,7 +442,16 @@
             html += '<tr>';
             html += '<td><span class="rank-badge ' + rankClass + '">' + rankDisplay + '</span></td>';
             html += '<td>' + s.name + '</td>';
-            html += '<td>' + s.subjectsSat + '</td>';
+            // Per-subject grade cells
+            viewSubjects.forEach(function(sub) {
+                var m = s.subjectMarks[sub];
+                if (m === null || m === undefined) {
+                    html += '<td><span style="color:#bbb;">—</span></td>';
+                } else {
+                    var g = marksToGrade(m);
+                    html += '<td class="grade-' + g + '" style="font-size:11px;font-weight:bold;">' + g + '</td>';
+                }
+            });
             html += '<td>' + (s.avgMarks !== null ? s.avgMarks : '<span style="color:#bbb;">—</span>') + '</td>';
             html += '<td>' + (s.totalPts !== null ? s.totalPts : '<span style="color:#bbb;">—</span>') + '</td>';
             html += '<td class="' + divClass + '">' + (s.division || '—') + '</td>';
