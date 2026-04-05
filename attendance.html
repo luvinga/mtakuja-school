@@ -14,9 +14,9 @@
 
 <button class="back-btn" onclick="goBack()">← Back</button>
 
-<h2 id="attendance-title">Take Attendance</h2>
+<h2 id="attendance-title" data-i18n="attendance_title">Take Attendance</h2>
 
-<p id="loading-msg" style="text-align:center; color:#666;">Loading students...</p>
+<p id="loading-msg" style="text-align:center; color:#666;" data-i18n="loading_students">Loading students...</p>
 <div id="attendance-list"></div>
 
 <br>
@@ -27,7 +27,7 @@
 <script src="firebase-firestore-compat.js"></script>
 <script src="firebase.js"></script>
 <script src="translations.js"></script>
-<script src="script.js?v=8"></script>
+<script src="script.js?v=9"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const cls = getSelectedClass();

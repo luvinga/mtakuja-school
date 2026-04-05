@@ -121,6 +121,59 @@ var TRANSLATIONS = {
         'print_results': 'Print Results',
         'select_class': 'Select Class',
         'select_stream': 'Select Stream',
+
+        // Teacher dashboard
+        'welcome': 'Welcome',
+        'admin_access': 'Admin — full access',
+        'admin_dashboard_btn': '📊 Dashboard Summary',
+        'admin_panel_btn': '⚙️ Admin Panel',
+
+        // Class dashboard
+        'select_stream_prompt': 'Select a stream',
+        'what_to_do': 'What would you like to do?',
+        'class_performance': '🏆 Class Performance & Ranking',
+
+        // Attendance
+        'attendance_title': 'Take Attendance',
+        'attendance_report': '📋 Attendance Report',
+        'loading_students': 'Loading students...',
+        'no_students': 'No students found.',
+        'present_label': 'Present',
+        'absent_label': 'Absent',
+        'date_label': 'Date',
+        'status_label': 'Status',
+
+        // Students list
+        'students_title': 'Students List',
+
+        // Grades
+        'grades_title': 'Enter Grades',
+        'grades_records_title': 'Grades Records',
+        'select_exam': 'Select Exam:',
+        'no_grades': 'No grades entered yet.',
+
+        // Notices
+        'no_notice_access': 'No access.',
+
+        // Conduct
+        'conduct_title': 'Enter Conduct',
+        'select_term_label': 'Select Term:',
+        'cleanliness': 'Cleanliness',
+        'behaviour': 'Behaviour',
+        'punctuality': 'Punctuality',
+        'community': 'Community Engagement',
+        'respect': 'Respect',
+
+        // Results / Grades view
+        'grades_report': 'Grades Report',
+        'result_slip_title': 'Result Slip',
+        'child_attendance': '📋 Attendance Report',
+
+        // Timetable
+        'view_timetable_title': '📅 Class Timetable',
+
+        // Notifications
+        'notifications_title': '🔔 Notifications',
     },
     sw: {
         // General
@@ -244,6 +297,59 @@ var TRANSLATIONS = {
         'print_results': 'Chapisha Matokeo',
         'select_class': 'Chagua Darasa',
         'select_stream': 'Chagua Mkondo',
+
+        // Teacher dashboard
+        'welcome': 'Karibu',
+        'admin_access': 'Msimamizi — ufikiaji kamili',
+        'admin_dashboard_btn': '📊 Muhtasari wa Dashibodi',
+        'admin_panel_btn': '⚙️ Paneli ya Msimamizi',
+
+        // Class dashboard
+        'select_stream_prompt': 'Chagua mkondo',
+        'what_to_do': 'Unataka kufanya nini?',
+        'class_performance': '🏆 Utendaji & Orodha ya Darasa',
+
+        // Attendance
+        'attendance_title': 'Chukua Mahudhurio',
+        'attendance_report': '📋 Ripoti ya Mahudhurio',
+        'loading_students': 'Inapakia wanafunzi...',
+        'no_students': 'Hakuna wanafunzi walioopatikana.',
+        'present_label': 'Yupo',
+        'absent_label': 'Hayupo',
+        'date_label': 'Tarehe',
+        'status_label': 'Hali',
+
+        // Students list
+        'students_title': 'Orodha ya Wanafunzi',
+
+        // Grades
+        'grades_title': 'Weka Alama',
+        'grades_records_title': 'Rekodi za Alama',
+        'select_exam': 'Chagua Mtihani:',
+        'no_grades': 'Hakuna alama bado.',
+
+        // Notices
+        'no_notice_access': 'Hakuna ufikiaji.',
+
+        // Conduct
+        'conduct_title': 'Weka Tabia',
+        'select_term_label': 'Chagua Muhula:',
+        'cleanliness': 'Usafi',
+        'behaviour': 'Tabia',
+        'punctuality': 'Utaratibu wa Wakati',
+        'community': 'Ushiriki wa Jamii',
+        'respect': 'Heshima',
+
+        // Results / Grades view
+        'grades_report': 'Ripoti ya Alama',
+        'result_slip_title': 'Stakabadhi ya Matokeo',
+        'child_attendance': '📋 Ripoti ya Mahudhurio',
+
+        // Timetable
+        'view_timetable_title': '📅 Ratiba ya Darasa',
+
+        // Notifications
+        'notifications_title': '🔔 Arifa',
     }
 };
 

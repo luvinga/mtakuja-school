@@ -319,13 +319,14 @@ function initLangToggle() {
     btn.style.bottom = '72px';
     btn.style.right = '20px';
     btn.style.fontSize = '14px';
-    btn.title = 'Toggle language';
+    btn.style.fontWeight = 'bold';
+    btn.title = 'Toggle language / Badilisha lugha';
     btn.textContent = getCurrentLang() === 'sw' ? 'EN' : 'SW';
     btn.onclick = function() {
         var newLang = getCurrentLang() === 'en' ? 'sw' : 'en';
         localStorage.setItem('appLang', newLang);
-        btn.textContent = newLang === 'sw' ? 'EN' : 'SW';
-        applyTranslations();
+        // Reload so all JS-rendered content also translates
+        window.location.reload();
     };
     document.body.appendChild(btn);
 }

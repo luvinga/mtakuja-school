@@ -58,10 +58,10 @@
 
 <button class="back-btn" onclick="goBack()">← Back</button>
 
-<h2 id="grades-title">Enter Grades</h2>
+<h2 id="grades-title" data-i18n="grades_title">Enter Grades</h2>
 
 <div class="selector-row">
-    <label for="exam-type-select">Select Exam:</label>
+    <label for="exam-type-select" data-i18n="select_exam">Select Exam:</label>
     <select id="exam-type-select" onchange="updateTitle()">
         <option value="Mid Term 1">Mid Term 1</option>
         <option value="Terminal 1">Terminal 1</option>
@@ -79,14 +79,14 @@
 <div id="grades-list"></div>
 
 <br>
-<button id="save-btn" onclick="saveGrades()" style="display:none;">Save Grades</button>
+<button id="save-btn" onclick="saveGrades()" style="display:none;" data-i18n="save_grades">Save Grades</button>
 
 </div>
 <script src="firebase-app-compat.js"></script>
 <script src="firebase-firestore-compat.js"></script>
 <script src="firebase.js"></script>
 <script src="translations.js"></script>
-<script src="script.js?v=8"></script>
+<script src="script.js?v=9"></script>
 <script>
     var loadedStudents = [];
     var classLabel = '';

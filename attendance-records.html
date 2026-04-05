@@ -14,7 +14,7 @@
 
 <button class="back-btn" onclick="goBack()">← Back</button>
 
-<h2 id="records-title">Attendance Records</h2>
+<h2 id="records-title" data-i18n="attendance_records">Attendance Records</h2>
 
 <div id="records-list"><p>Loading...</p></div>
 
@@ -23,7 +23,7 @@
 <script src="firebase-firestore-compat.js"></script>
 <script src="firebase.js?v=2"></script>
 <script src="translations.js"></script>
-<script src="script.js?v=8"></script>
+<script src="script.js?v=9"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const cls    = getSelectedClass();

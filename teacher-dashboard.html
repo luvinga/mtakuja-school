@@ -17,14 +17,14 @@
 
 <div id="form-buttons"></div>
 
-<button onclick="logout()" style="background:#f44336; margin-top:20px;">Logout</button>
+<button onclick="logout()" style="background:#f44336; margin-top:20px;" data-i18n="logout">Logout</button>
 
 </div>
 <script src="firebase-app-compat.js"></script>
 <script src="firebase-firestore-compat.js"></script>
 <script src="firebase.js"></script>
 <script src="translations.js"></script>
-<script src="script.js?v=8"></script>
+<script src="script.js?v=9"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const role = checkAuth();
@@ -56,12 +56,12 @@
     });
 
     function renderDashboard(teacher) {
-        document.getElementById('dashboard-title').textContent = '👨‍🏫 Welcome, ' + teacher.name;
+        document.getElementById('dashboard-title').textContent = '👨‍🏫 ' + t('welcome') + ', ' + teacher.name;
 
         if (teacher.role === 'admin') {
-            document.getElementById('dashboard-sub').textContent = 'Admin — full access';
+            document.getElementById('dashboard-sub').textContent = t('admin_access');
         } else if (teacher.subject) {
-            document.getElementById('dashboard-sub').textContent = 'Subject: ' + teacher.subject;
+            document.getElementById('dashboard-sub').textContent = teacher.subject;
         } else {
             document.getElementById('dashboard-sub').textContent = '';
         }
@@ -77,16 +77,15 @@
             container.appendChild(btn);
         });
 
-        // Show admin panel link for admin users
         if (teacher.role === 'admin') {
             const dashBtn = document.createElement('button');
-            dashBtn.textContent = '📊 Dashboard Summary';
+            dashBtn.textContent = t('admin_dashboard_btn');
             dashBtn.style.background = 'linear-gradient(135deg, #1565c0, #0d47a1)';
             dashBtn.onclick = function() { goTo('admin-dashboard.html'); };
             container.appendChild(dashBtn);
 
             const adminBtn = document.createElement('button');
-            adminBtn.textContent = '⚙️ Admin Panel';
+            adminBtn.textContent = t('admin_panel_btn');
             adminBtn.style.background = '#9C27B0';
             adminBtn.onclick = function() { goTo('admin.html'); };
             container.appendChild(adminBtn);

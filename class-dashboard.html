@@ -17,14 +17,14 @@
 <!-- Stream selection (Form 3 & 4 only) -->
 <div id="stream-section" style="display:none;">
     <h2 id="stream-title"></h2>
-    <p style="text-align:center; color:#666;">Select a stream</p>
+    <p id="stream-prompt" style="text-align:center; color:#666;">Select a stream</p>
     <div id="stream-buttons"></div>
 </div>
 
 <!-- Actions -->
 <div id="actions-section" style="display:none;">
     <h2 id="class-title"></h2>
-    <p style="text-align:center; color:#666;">What would you like to do?</p>
+    <p id="actions-prompt" style="text-align:center; color:#666;">What would you like to do?</p>
     <div id="action-buttons"></div>
 </div>
 
@@ -35,7 +35,7 @@
 <script src="firebase-firestore-compat.js"></script>
 <script src="firebase.js"></script>
 <script src="translations.js"></script>
-<script src="script.js?v=8"></script>
+<script src="script.js?v=9"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const role = checkAuth();
@@ -95,6 +95,7 @@
             return;
         }
         document.getElementById('stream-title').textContent = '📚 ' + cls;
+        document.getElementById('stream-prompt').textContent = t('select_stream_prompt');
         document.getElementById('stream-section').style.display = 'block';
 
         const icons = { Science: '🔬', Business: '💼', Arts: '🎨' };
@@ -125,19 +126,21 @@
         const canAttend = teacherCanAttend(teacher, cls, stream);
         const canGrade  = teacherCanGrade(teacher, cls, stream);
 
+        document.getElementById('actions-prompt').textContent = t('what_to_do');
+
         if (canAttend) {
-            addActionBtn(container, '✅ Take Attendance', 'attendance.html');
-            addActionBtn(container, '🌟 Enter Conduct', 'conduct.html');
+            addActionBtn(container, t('take_attendance'), 'attendance.html');
+            addActionBtn(container, t('enter_conduct'), 'conduct.html');
         }
         if (canGrade) {
-            addActionBtn(container, '📝 Enter Grades', 'grades.html');
+            addActionBtn(container, t('enter_grades'), 'grades.html');
         }
-        addActionBtn(container, '👥 View Students', 'students.html');
-        addActionBtn(container, '📋 Attendance Records', 'attendance-records.html');
-        addActionBtn(container, '📊 Grades Records', 'grades-records.html');
-        addActionBtn(container, '📅 View Timetable', 'timetable.html');
+        addActionBtn(container, t('view_students'), 'students.html');
+        addActionBtn(container, t('attendance_records'), 'attendance-records.html');
+        addActionBtn(container, t('grades_records'), 'grades-records.html');
+        addActionBtn(container, t('view_timetable'), 'timetable.html');
         if (canAttend || canGrade) {
-            addActionBtn(container, '🏆 Class Performance & Ranking', 'class-performance.html');
+            addActionBtn(container, t('class_performance'), 'class-performance.html');
         }
     }
 
