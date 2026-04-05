@@ -245,7 +245,14 @@ function saveGrades() {
         grades: {...grades},
         timestamp: new Date().toISOString()
     };
-    db.collection('grades').add(record)
+    // Use existing doc if available (set from grades.html), otherwise create new
+    var savePromise;
+    if (typeof existingDocId !== 'undefined' && existingDocId) {
+        savePromise = db.collection('grades').doc(existingDocId).set(record);
+    } else {
+        savePromise = db.collection('grades').add(record);
+    }
+    savePromise
         .then(function() {
             alert('Grades Saved!');
             grades = {};

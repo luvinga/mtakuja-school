@@ -40,6 +40,12 @@
             outline: none;
             border-color: #43a047;
         }
+        .grade-input:read-only {
+            background: #f1f8e9;
+            border-color: #a5d6a7;
+            color: #2e7d32;
+            cursor: default;
+        }
         .grade-badge {
             font-weight: bold;
             font-size: 15px;
@@ -51,6 +57,28 @@
         .grade-C { color: #f57c00; }
         .grade-D { color: #e65100; }
         .grade-F { color: #c62828; }
+        .saved-indicator {
+            font-size: 11px;
+            color: #2e7d32;
+            white-space: nowrap;
+        }
+        .edit-grade-btn {
+            font-size: 11px;
+            padding: 3px 8px;
+            background: #1976D2;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .edit-grade-btn:hover { background: #1565C0; }
+        #load-status {
+            font-size: 12px;
+            color: #888;
+            text-align: center;
+            margin: 4px 0 8px;
+        }
     </style>
 </head>
 <body>
@@ -76,6 +104,7 @@
 </div>
 
 <p id="loading-msg" style="text-align:center; color:#666;">Loading students...</p>
+<p id="load-status"></p>
 <div id="grades-list"></div>
 
 <br>
@@ -90,6 +119,8 @@
 <script>
     var loadedStudents = [];
     var classLabel = '';
+    var existingDocId = null;   // Firestore doc id if grades already saved
+    var existingGrades = {};    // { studentName: marks }
 
     function updateTitle() {
         const examType = document.getElementById('exam-type-select').value;
@@ -103,7 +134,6 @@
         classLabel = stream ? cls + ' ' + stream : cls;
         updateTitle();
 
-        // Populate subjects — admin sees all, subject teacher sees only their subject
         let teacher = null;
         try { teacher = JSON.parse(localStorage.getItem('teacherData')); } catch(e) {}
 
@@ -111,7 +141,6 @@
         const subjectLabel = document.getElementById('subject-label');
 
         if (teacher && teacher.role !== 'admin' && teacher.subject) {
-            // Subject teacher — lock to their subject, no dropdown needed
             const opt = document.createElement('option');
             opt.value = teacher.subject;
             opt.textContent = teacher.subject;
@@ -119,7 +148,6 @@
             select.disabled = true;
             subjectLabel.textContent = 'Subject:';
         } else {
-            // Admin — show all subjects
             const subjects = getCurrentSubjects();
             subjects.forEach(function(subject) {
                 const opt = document.createElement('option');
@@ -129,7 +157,7 @@
             });
         }
 
-        // Load students from Firestore
+        // Load students first, then load existing grades
         loadStudentsForClass(cls, stream || null)
             .then(function(students) {
                 document.getElementById('loading-msg').style.display = 'none';
@@ -141,19 +169,71 @@
                     return;
                 }
 
-                // Sort alphabetically
                 students.sort(function(a, b) { return a.name.localeCompare(b.name); });
                 loadedStudents = students;
-                renderStudentList();
+                loadExistingGrades();
             })
             .catch(function(err) {
                 document.getElementById('loading-msg').textContent = 'Error loading students: ' + err.message;
             });
+
+        // Reload existing grades whenever subject or exam changes
+        document.getElementById('subject-select').addEventListener('change', loadExistingGrades);
+        document.getElementById('exam-type-select').addEventListener('change', function() {
+            updateTitle();
+            loadExistingGrades();
+        });
     });
 
-    function renderStudentList() {
+    function loadExistingGrades() {
+        if (loadedStudents.length === 0) return;
+        const cls    = getSelectedClass();
+        const stream = getSelectedStream() || null;
+        const subject  = document.getElementById('subject-select').value;
+        const examType = document.getElementById('exam-type-select').value;
+        const statusEl = document.getElementById('load-status');
+
+        if (!subject) { renderStudentList({}); return; }
+
+        statusEl.textContent = 'Checking existing grades...';
+        existingDocId  = null;
+        existingGrades = {};
+
+        db.collection('grades')
+            .where('class',    '==', cls)
+            .where('stream',   '==', stream)
+            .where('subject',  '==', subject)
+            .where('examType', '==', examType)
+            .get()
+            .then(function(snap) {
+                if (!snap.empty) {
+                    // Last saved record wins
+                    var sorted = snap.docs.slice().sort(function(a, b) {
+                        return (a.data().date || '') < (b.data().date || '') ? 1 : -1;
+                    });
+                    existingDocId  = sorted[0].id;
+                    existingGrades = sorted[0].data().grades || {};
+                    var count = Object.keys(existingGrades).filter(function(k) {
+                        return existingGrades[k] !== '' && existingGrades[k] !== null && existingGrades[k] !== undefined;
+                    }).length;
+                    statusEl.innerHTML = '✅ <strong>' + count + ' grade(s)</strong> already saved for this exam. Locked fields can be unlocked with the Edit button.';
+                    statusEl.style.color = '#2e7d32';
+                } else {
+                    statusEl.textContent = 'No grades saved yet for this exam.';
+                    statusEl.style.color = '#888';
+                }
+                renderStudentList(existingGrades);
+            })
+            .catch(function(err) {
+                statusEl.textContent = 'Error checking grades: ' + err.message;
+                renderStudentList({});
+            });
+    }
+
+    function renderStudentList(savedGrades) {
         const list = document.getElementById('grades-list');
         list.innerHTML = '';
+
         loadedStudents.forEach(function(student) {
             const div = document.createElement('div');
             div.className = 'student-row';
@@ -165,6 +245,9 @@
             const gradeCell = document.createElement('div');
             gradeCell.className = 'grade-cell';
 
+            const existingVal = savedGrades[student.name];
+            const hasExisting = existingVal !== undefined && existingVal !== null && existingVal !== '';
+
             const input = document.createElement('input');
             input.type = 'number';
             input.className = 'grade-input';
@@ -174,7 +257,17 @@
 
             const badge = document.createElement('span');
             badge.className = 'grade-badge';
-            badge.textContent = '—';
+
+            if (hasExisting) {
+                input.value = existingVal;
+                input.readOnly = true;
+                var g = marksToGrade(parseFloat(existingVal));
+                badge.textContent = g;
+                badge.className = 'grade-badge grade-' + g;
+            } else {
+                badge.textContent = '—';
+                badge.className = 'grade-badge';
+            }
 
             input.addEventListener('input', function() {
                 var val = this.value.trim();
@@ -190,6 +283,27 @@
 
             gradeCell.appendChild(input);
             gradeCell.appendChild(badge);
+
+            // If already saved, show a small indicator + Edit button
+            if (hasExisting) {
+                const savedSpan = document.createElement('span');
+                savedSpan.className = 'saved-indicator';
+                savedSpan.textContent = '✔ saved';
+                gradeCell.appendChild(savedSpan);
+
+                const editBtn = document.createElement('button');
+                editBtn.className = 'edit-grade-btn';
+                editBtn.textContent = 'Edit';
+                editBtn.onclick = function() {
+                    input.readOnly = false;
+                    input.focus();
+                    input.select();
+                    savedSpan.textContent = '✏️ editing';
+                    savedSpan.style.color = '#e65100';
+                    editBtn.style.display = 'none';
+                };
+                gradeCell.appendChild(editBtn);
+            }
 
             div.appendChild(nameSpan);
             div.appendChild(gradeCell);
